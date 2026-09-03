@@ -1,6 +1,6 @@
 // Powered by OnSpace.AI — All Photos Screen
-import React, { useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, Dimensions } from 'react-native';
+import React, { useEffect, useCallback, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, Pressable, Dimensions, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,10 +24,21 @@ export default function AllPhotosScreen() {
 
   const screenWidth = Dimensions.get('window').width;
   const photoSize = Math.floor((screenWidth - GAP * (NUM_COLS - 1)) / NUM_COLS);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (user) loadAllPhotos(user.id);
   }, [user]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!user) return;
+    setRefreshing(true);
+    try {
+      await loadAllPhotos(user.id);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [user, loadAllPhotos]);
 
   const handleLongPress = useCallback((photo: Photo) => {
     showAlert('Que souhaitez-vous faire ?', photo.name, [
@@ -106,6 +117,7 @@ export default function AllPhotosScreen() {
           keyExtractor={(item) => item.title}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
           renderItem={({ item: section }) => (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>

@@ -1,6 +1,6 @@
 // Powered by OnSpace.AI — Groups Screen
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { View, Text, FlatList, StyleSheet, Pressable, TextInput, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,10 +23,28 @@ export default function GroupsScreen() {
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (user) loadGroups(user.id);
   }, [user]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!user) return;
+    setRefreshing(true);
+    try {
+      await loadGroups(user.id);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [user, loadGroups]);
+
+  const filteredGroups = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return groups;
+    return groups.filter((g) => g.name.toLowerCase().includes(q));
+  }, [groups, search]);
 
   const handleCreate = useCallback(async () => {
     if (!groupName.trim()) {
@@ -80,14 +98,42 @@ export default function GroupsScreen() {
         </View>
       ) : null}
 
+      {/* Search */}
+      {groups.length > 3 ? (
+        <View style={styles.searchBar}>
+          <MaterialIcons name="search" size={20} color={Colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Rechercher un groupe..."
+            placeholderTextColor={Colors.textMuted}
+            accessibilityLabel="Rechercher un groupe"
+            returnKeyType="search"
+          />
+          {search.length > 0 ? (
+            <Pressable onPress={() => setSearch('')} hitSlop={8}>
+              <MaterialIcons name="close" size={18} color={Colors.textMuted} />
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
       <FlatList
-        data={groups}
+        data={filteredGroups}
         keyExtractor={(item) => item.id}
         renderItem={renderGroup}
         numColumns={2}
-        contentContainerStyle={[styles.list, groups.length === 0 && { flex: 1 }]}
+        contentContainerStyle={[styles.list, filteredGroups.length === 0 && { flex: 1 }]}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={<EmptyState title="Aucun groupe" subtitle="Créez votre premier groupe pour organiser vos albums photo." />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
+        ListEmptyComponent={
+          groups.length > 0 ? (
+            <EmptyState title="Aucun résultat" subtitle={`Aucun groupe ne correspond à "${search}".`} />
+          ) : (
+            <EmptyState title="Aucun groupe" subtitle="Créez votre premier groupe pour organiser vos albums photo." />
+          )
+        }
       />
 
       {/* FAB */}
@@ -117,6 +163,13 @@ const styles = StyleSheet.create({
   addBtn: { width: 44, height: 44, borderRadius: Radius.md, backgroundColor: Colors.surfaceCard, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   statsBar: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
   statsText: { color: Colors.textMuted, fontSize: Typography.sizes.sm },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    marginHorizontal: Spacing.lg, marginBottom: Spacing.md,
+    backgroundColor: Colors.surfaceCard, borderWidth: 1, borderColor: Colors.border,
+    borderRadius: Radius.md, paddingHorizontal: Spacing.md, height: 44,
+  },
+  searchInput: { flex: 1, color: Colors.textPrimary, fontSize: Typography.sizes.base, includeFontPadding: false },
   list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
   cardWrapper: { flex: 1, marginBottom: Spacing.md },
   fab: { position: 'absolute', right: Spacing.lg, width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10, elevation: 8 },

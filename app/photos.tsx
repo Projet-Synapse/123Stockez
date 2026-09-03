@@ -1,6 +1,6 @@
 // Powered by OnSpace.AI — Photos Screen
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, Share, Dimensions } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable, Share, Dimensions, RefreshControl } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,10 +27,21 @@ export default function PhotosScreen() {
 
   const screenWidth = Dimensions.get('window').width;
   const photoSize = Math.floor((screenWidth - Spacing.lg * 2 - GAP * (NUM_COLS - 1)) / NUM_COLS);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (albumId) loadPhotos(albumId);
   }, [albumId]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!albumId) return;
+    setRefreshing(true);
+    try {
+      await loadPhotos(albumId);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [albumId, loadPhotos]);
 
   const handleAddPhoto = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -108,6 +119,7 @@ export default function PhotosScreen() {
         columnWrapperStyle={{ gap: GAP }}
         ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={accentColor} colors={[accentColor]} />}
         ListHeaderComponent={photos.length > 0 ? <Text style={styles.meta}>{photos.length} photo{photos.length > 1 ? 's' : ''}</Text> : null}
         ListEmptyComponent={<EmptyState title="Aucune photo" subtitle="Appuyez sur + pour ajouter des photos depuis votre téléphone." />}
       />
