@@ -1,8 +1,8 @@
 // Powered by OnSpace.AI — Carnets Tab (list of all carnets)
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet, Pressable, TextInput,
-  ScrollView, Modal, KeyboardAvoidingView, Platform,
+  ScrollView, Modal, KeyboardAvoidingView, Platform, RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -33,10 +33,28 @@ export default function CarnetsScreen() {
   const [newFieldLabel, setNewFieldLabel] = useState('');
   const [newFieldType, setNewFieldType] = useState<'text' | 'number'>('text');
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (user) loadCarnets(user.id);
   }, [user]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!user) return;
+    setRefreshing(true);
+    try {
+      await loadCarnets(user.id);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [user, loadCarnets]);
+
+  const filteredCarnets = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return carnets;
+    return carnets.filter((c) => c.name.toLowerCase().includes(q));
+  }, [carnets, search]);
 
   const addField = useCallback(() => {
     const label = newFieldLabel.trim();
@@ -122,18 +140,44 @@ export default function CarnetsScreen() {
         </View>
       ) : null}
 
+      {/* Search */}
+      {carnets.length > 3 ? (
+        <View style={styles.searchBar}>
+          <MaterialIcons name="search" size={20} color={Colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Rechercher un carnet..."
+            placeholderTextColor={Colors.textMuted}
+            accessibilityLabel="Rechercher un carnet"
+            returnKeyType="search"
+          />
+          {search.length > 0 ? (
+            <Pressable onPress={() => setSearch('')} hitSlop={8}>
+              <MaterialIcons name="close" size={18} color={Colors.textMuted} />
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
       <FlatList
-        data={carnets}
+        data={filteredCarnets}
         keyExtractor={(item) => item.id}
         renderItem={renderCarnet}
         numColumns={2}
-        contentContainerStyle={[styles.list, carnets.length === 0 && { flex: 1 }]}
+        contentContainerStyle={[styles.list, filteredCarnets.length === 0 && { flex: 1 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
         ListEmptyComponent={
-          <EmptyState
-            title="Aucun carnet"
-            subtitle={"Créez un carnet pour organiser vos photos avec des informations personnalisées (plantes, recettes, animaux...)"}
-          />
+          carnets.length > 0 ? (
+            <EmptyState title="Aucun résultat" subtitle={`Aucun carnet ne correspond à "${search}".`} />
+          ) : (
+            <EmptyState
+              title="Aucun carnet"
+              subtitle={"Créez un carnet pour organiser vos photos avec des informations personnalisées (plantes, recettes, animaux...)"}
+            />
+          )
         }
       />
 
@@ -268,6 +312,13 @@ const styles = StyleSheet.create({
   },
   statsBar: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
   statsText: { color: Colors.textMuted, fontSize: Typography.sizes.sm },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    marginHorizontal: Spacing.lg, marginBottom: Spacing.md,
+    backgroundColor: Colors.surfaceCard, borderWidth: 1, borderColor: Colors.border,
+    borderRadius: Radius.md, paddingHorizontal: Spacing.md, height: 44,
+  },
+  searchInput: { flex: 1, color: Colors.textPrimary, fontSize: Typography.sizes.base, includeFontPadding: false },
   list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
   cardWrapper: { flex: 1, marginBottom: Spacing.md },
   fab: {
