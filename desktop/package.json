@@ -1,10 +1,13 @@
 {
   "name": "stockez-desktop",
   "productName": "123Stockez",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "123Stockez — coffre-fort photo multiplateforme",
   "main": "main.js",
-  "author": "123Stockez",
+  "author": {
+    "name": "Projet-Synapse",
+    "email": "catelyn2332-design@users.noreply.github.com"
+  },
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {

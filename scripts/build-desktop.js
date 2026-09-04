@@ -21,7 +21,14 @@ const targets = args.filter((a) => ['--linux', '--mac', '--win'].includes(a));
 
 function run(command, commandArgs, options = {}) {
   console.log(`\n▸ ${command} ${commandArgs.join(' ')}`);
-  execFileSync(command, commandArgs, { stdio: 'inherit', cwd: ROOT, ...options });
+  execFileSync(command, commandArgs, {
+    stdio: 'inherit',
+    cwd: ROOT,
+    // Windows ships `npx.cmd`, not `npx`; execFileSync cannot spawn a .cmd
+    // without going through the shell.
+    shell: process.platform === 'win32',
+    ...options,
+  });
 }
 
 function readJson(file) {

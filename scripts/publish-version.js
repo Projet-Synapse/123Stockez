@@ -48,7 +48,7 @@ if (!url || !serviceKey) {
 }
 
 const DESKTOP_PLATFORMS = new Set(['linux', 'macos', 'windows']);
-const releasesUrl = `https://github.com/${pkg.repository || 'catelyn2332-design/123Stockez'}/releases/tag/v${version}`;
+const releasesUrl = `https://github.com/${pkg.repository || 'Projet-Synapse/123Stockez'}/releases/tag/v${version}`;
 
 const rows = platforms.map((platform) => ({
   version,
