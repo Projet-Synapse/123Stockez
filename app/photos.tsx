@@ -1,6 +1,16 @@
 // Powered by OnSpace.AI — Photos Screen
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, Share, Dimensions, RefreshControl, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  Share,
+  Dimensions,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGallery } from '@/hooks/useGallery';
 import { useAlert } from '@/template';
 import { PhotoThumbnail, EmptyState } from '@/components';
-import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
+import { Colors, Typography, Spacing } from '@/constants/theme';
 import { Photo } from '@/types';
 
 const NUM_COLS = 3;
@@ -19,7 +29,11 @@ const GAP = 2;
 export default function PhotosScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { albumId, albumName, color } = useLocalSearchParams<{ albumId: string; albumName: string; color: string }>();
+  const { albumId, albumName, color } = useLocalSearchParams<{
+    albumId: string;
+    albumName: string;
+    color: string;
+  }>();
   const { user } = useAuth();
   const { photos, loadPhotos, addPhoto, removePhoto } = useGallery();
   const { showAlert } = useAlert();
@@ -59,7 +73,7 @@ export default function PhotosScreen() {
     });
     if (!result.canceled) {
       for (const asset of result.assets) {
-        const groupId = (photos[0]?.groupId) ?? '';
+        const groupId = photos[0]?.groupId ?? '';
         await addPhoto(user!.id, albumId, groupId, asset.uri, asset.fileName || `photo_${Date.now()}`);
       }
     }
@@ -68,30 +82,47 @@ export default function PhotosScreen() {
   const handleShareAlbum = useCallback(async () => {
     const count = photos.length;
     try {
-      await Share.share({
-        subject: `Album PhotoVault : ${albumName}`,
-        message: `Découvre mon album "${albumName}" sur PhotoVault ! Il contient ${count} photo${count > 1 ? 's' : ''}.`,
-      });
-    } catch (e) {
+      await Share.share(
+        {
+          message: `Découvre mon album "${albumName}" sur PhotoVault ! Il contient ${count} photo${count > 1 ? 's' : ''}.`,
+        },
+        { subject: `Album PhotoVault : ${albumName}`, dialogTitle: `Partager « ${albumName} »` },
+      );
+    } catch {
       showAlert('Erreur', 'Impossible de partager cet album.');
     }
   }, [photos, albumName]);
 
-  const handleLongPress = useCallback((photo: Photo) => {
-    showAlert('Supprimer cette photo ?', 'Cette action est irréversible.', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: () => removePhoto(photo.id, albumId, photo.groupId) },
-    ]);
-  }, [albumId]);
+  const handleLongPress = useCallback(
+    (photo: Photo) => {
+      showAlert('Supprimer cette photo ?', 'Cette action est irréversible.', [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => removePhoto(photo.id, albumId, photo.groupId),
+        },
+      ]);
+    },
+    [albumId],
+  );
 
-  const renderPhoto = useCallback(({ item }: { item: Photo }) => (
-    <PhotoThumbnail
-      photo={item}
-      size={photoSize}
-      onPress={() => router.push({ pathname: '/viewer', params: { photoUri: item.uri, photoName: item.name, photoId: item.id, albumName } })}
-      onLongPress={() => handleLongPress(item)}
-    />
-  ), [photoSize, albumName, handleLongPress]);
+  const renderPhoto = useCallback(
+    ({ item }: { item: Photo }) => (
+      <PhotoThumbnail
+        photo={item}
+        size={photoSize}
+        onPress={() =>
+          router.push({
+            pathname: '/viewer',
+            params: { photoUri: item.uri, photoName: item.name, photoId: item.id, albumName },
+          })
+        }
+        onLongPress={() => handleLongPress(item)}
+      />
+    ),
+    [photoSize, albumName, handleLongPress],
+  );
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -99,15 +130,35 @@ export default function PhotosScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retour">
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
+        >
           <MaterialIcons name="arrow-back" size={24} color={Colors.textPrimary} />
         </Pressable>
-        <Text style={styles.title} numberOfLines={1}>{albumName}</Text>
+        <Text style={styles.title} numberOfLines={1}>
+          {albumName}
+        </Text>
         <View style={styles.headerActions}>
-          <Pressable onPress={handleShareAlbum} style={styles.iconBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Partager l'album">
+          <Pressable
+            onPress={handleShareAlbum}
+            style={styles.iconBtn}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Partager l'album"
+          >
             <MaterialIcons name="share" size={22} color={Colors.textSecondary} />
           </Pressable>
-          <Pressable onPress={handleAddPhoto} style={styles.iconBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Ajouter des photos">
+          <Pressable
+            onPress={handleAddPhoto}
+            style={styles.iconBtn}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Ajouter des photos"
+          >
             <MaterialIcons name="add-photo-alternate" size={24} color={Colors.textPrimary} />
           </Pressable>
         </View>
@@ -127,14 +178,37 @@ export default function PhotosScreen() {
           columnWrapperStyle={{ gap: GAP }}
           ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={accentColor} colors={[accentColor]} />}
-          ListHeaderComponent={photos.length > 0 ? <Text style={styles.meta}>{photos.length} photo{photos.length > 1 ? 's' : ''}</Text> : null}
-          ListEmptyComponent={<EmptyState title="Aucune photo" subtitle="Appuyez sur + pour ajouter des photos depuis votre téléphone." />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={accentColor}
+              colors={[accentColor]}
+            />
+          }
+          ListHeaderComponent={
+            photos.length > 0 ? (
+              <Text style={styles.meta}>
+                {photos.length} photo{photos.length > 1 ? 's' : ''}
+              </Text>
+            ) : null
+          }
+          ListEmptyComponent={
+            <EmptyState
+              title="Aucune photo"
+              subtitle="Appuyez sur + pour ajouter des photos depuis votre téléphone."
+            />
+          }
         />
       )}
 
       {/* FAB add photo */}
-      <Pressable style={[styles.fab, { bottom: insets.bottom + Spacing.lg, backgroundColor: accentColor }]} onPress={handleAddPhoto} accessibilityRole="button" accessibilityLabel="Ajouter des photos">
+      <Pressable
+        style={[styles.fab, { bottom: insets.bottom + Spacing.lg, backgroundColor: accentColor }]}
+        onPress={handleAddPhoto}
+        accessibilityRole="button"
+        accessibilityLabel="Ajouter des photos"
+      >
         <MaterialIcons name="add-photo-alternate" size={28} color={Colors.textPrimary} />
       </Pressable>
     </View>
@@ -143,13 +217,43 @@ export default function PhotosScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, gap: Spacing.sm },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  title: { color: Colors.textPrimary, fontSize: Typography.sizes.xl, fontWeight: Typography.weights.bold, flex: 1, includeFontPadding: false },
+  title: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+    flex: 1,
+    includeFontPadding: false,
+  },
   headerActions: { flexDirection: 'row', gap: Spacing.xs },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  meta: { color: Colors.textMuted, fontSize: Typography.sizes.sm, marginBottom: Spacing.sm, paddingHorizontal: Spacing.lg },
+  meta: {
+    color: Colors.textMuted,
+    fontSize: Typography.sizes.sm,
+    marginBottom: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+  },
   grid: { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
-  fab: { position: 'absolute', right: Spacing.lg, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8 },
+  fab: {
+    position: 'absolute',
+    right: Spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
 });

@@ -27,8 +27,12 @@ export const GroupCard = React.memo(({ group, onPress, onLongPress }: GroupCardP
       )}
       <View style={[styles.colorBar, { backgroundColor: group.color }]} />
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>{group.name}</Text>
-        <Text style={styles.meta}>{group.albumCount} album{group.albumCount !== 1 ? 's' : ''}</Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {group.name}
+        </Text>
+        <Text style={styles.meta}>
+          {group.albumCount} album{group.albumCount !== 1 ? 's' : ''}
+        </Text>
       </View>
     </Pressable>
   );
@@ -51,7 +55,14 @@ const styles = StyleSheet.create({
   icon: { fontSize: 40 },
   colorBar: { height: 3, width: '100%' },
   info: { padding: Spacing.md },
-  name: { color: Colors.textPrimary, fontSize: Typography.sizes.base, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  name: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
   meta: { color: Colors.textMuted, fontSize: Typography.sizes.xs, marginTop: 2, includeFontPadding: false },
   pressed: { opacity: 0.85, transform: [{ scale: 0.97 }] },
 });
+
+GroupCard.displayName = 'GroupCard';

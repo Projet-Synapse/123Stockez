@@ -1,8 +1,15 @@
 // Powered by OnSpace.AI — Carnet Entry (create / view / edit)
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, ScrollView, TextInput,
-  KeyboardAvoidingView, Platform, Dimensions,
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -77,9 +84,7 @@ export default function CarnetEntryScreen() {
   };
 
   const setFieldValue = useCallback((fieldId: string, value: string) => {
-    setFieldValues((prev) =>
-      prev.map((fv) => (fv.fieldId === fieldId ? { ...fv, value } : fv))
-    );
+    setFieldValues((prev) => prev.map((fv) => (fv.fieldId === fieldId ? { ...fv, value } : fv)));
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -118,7 +123,9 @@ export default function CarnetEntryScreen() {
         <Pressable onPress={() => router.back()} style={styles.iconBtn} hitSlop={8}>
           <MaterialIcons name="arrow-back" size={24} color={Colors.textPrimary} />
         </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>{carnetName}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {carnetName}
+        </Text>
         {isEditing ? (
           <Pressable
             style={[styles.saveBtn, saving && { opacity: 0.6 }]}
@@ -136,12 +143,7 @@ export default function CarnetEntryScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Photo */}
-        <Image
-          source={{ uri }}
-          style={styles.photo}
-          contentFit="cover"
-          transition={200}
-        />
+        <Image source={{ uri }} style={styles.photo} contentFit="cover" transition={200} />
 
         <View style={styles.body}>
           {/* Name */}
@@ -222,7 +224,13 @@ export default function CarnetEntryScreen() {
           {/* Date */}
           {existingEntry ? (
             <Text style={styles.date}>
-              Ajouté le {new Date(existingEntry.createdAt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              Ajouté le{' '}
+              {new Date(existingEntry.createdAt).toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
             </Text>
           ) : null}
 
@@ -236,55 +244,127 @@ export default function CarnetEntryScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm, gap: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.sm,
+    gap: Spacing.sm,
   },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: {
-    flex: 1, color: Colors.textSecondary, fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.medium, includeFontPadding: false,
+    flex: 1,
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.medium,
+    includeFontPadding: false,
   },
   saveBtn: {
-    backgroundColor: Colors.primary, paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm, borderRadius: Radius.full,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
   },
-  saveBtnText: { color: Colors.textPrimary, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  saveBtnText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
   editBtn: {
-    width: 44, height: 44, borderRadius: Radius.md,
-    backgroundColor: Colors.surfaceCard, borderWidth: 1, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   photo: { width: SCREEN_W, height: SCREEN_W * 0.75 },
   body: { padding: Spacing.lg, gap: Spacing.lg },
   nameInput: {
-    color: Colors.textPrimary, fontSize: Typography.sizes.xxl, fontWeight: Typography.weights.bold,
-    backgroundColor: Colors.surfaceCard, borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.border,
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.xxl,
+    fontWeight: Typography.weights.bold,
+    backgroundColor: Colors.surfaceCard,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  entryName: { color: Colors.textPrimary, fontSize: Typography.sizes.xxl, fontWeight: Typography.weights.bold, includeFontPadding: false },
+  entryName: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.xxl,
+    fontWeight: Typography.weights.bold,
+    includeFontPadding: false,
+  },
   section: { gap: Spacing.sm },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
-  sectionTitle: { color: Colors.textSecondary, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  sectionTitle: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
   descInput: {
-    backgroundColor: Colors.surfaceCard, borderWidth: 1, borderColor: Colors.border,
-    borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
-    color: Colors.textPrimary, fontSize: Typography.sizes.base,
+    backgroundColor: Colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
     minHeight: 96,
   },
-  descText: { color: Colors.textPrimary, fontSize: Typography.sizes.base, lineHeight: 24, includeFontPadding: false },
-  emptyField: { color: Colors.textMuted, fontSize: Typography.sizes.base, fontStyle: 'italic', includeFontPadding: false },
+  descText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    lineHeight: 24,
+    includeFontPadding: false,
+  },
+  emptyField: {
+    color: Colors.textMuted,
+    fontSize: Typography.sizes.base,
+    fontStyle: 'italic',
+    includeFontPadding: false,
+  },
   fieldsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   fieldCard: {
-    backgroundColor: Colors.surfaceCard, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.border,
-    padding: Spacing.sm, minWidth: '45%', flex: 1,
+    backgroundColor: Colors.surfaceCard,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.sm,
+    minWidth: '45%',
+    flex: 1,
   },
-  fieldCardLabel: { color: Colors.primary, fontSize: Typography.sizes.xs, fontWeight: Typography.weights.semibold, marginBottom: 4, includeFontPadding: false },
+  fieldCardLabel: {
+    color: Colors.primary,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semibold,
+    marginBottom: 4,
+    includeFontPadding: false,
+  },
   fieldCardInput: {
-    color: Colors.textPrimary, fontSize: Typography.sizes.base,
-    borderBottomWidth: 1, borderBottomColor: Colors.border, paddingVertical: 2,
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingVertical: 2,
   },
-  fieldCardValue: { color: Colors.textPrimary, fontSize: Typography.sizes.base, fontWeight: Typography.weights.medium, includeFontPadding: false },
-  date: { color: Colors.textMuted, fontSize: Typography.sizes.xs, textAlign: 'center', includeFontPadding: false, marginTop: Spacing.sm },
+  fieldCardValue: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.medium,
+    includeFontPadding: false,
+  },
+  date: {
+    color: Colors.textMuted,
+    fontSize: Typography.sizes.xs,
+    textAlign: 'center',
+    includeFontPadding: false,
+    marginTop: Spacing.sm,
+  },
 });

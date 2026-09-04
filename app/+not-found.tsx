@@ -1,5 +1,5 @@
 /*
- * @Description: 
+ * @Description:
  */
 
 // Powered by OnSpace.AI
@@ -12,22 +12,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function NotFoundScreen() {
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#0a0a0a', '#1a1a1a']}
-        style={StyleSheet.absoluteFillObject}
-      />
-      
+      <LinearGradient colors={['#0a0a0a', '#1a1a1a']} style={StyleSheet.absoluteFillObject} />
+
       <View style={styles.content}>
         <MaterialIcons name="photo-camera" size={80} color="#FFD700" />
         <Text style={styles.title}>Page Not Found</Text>
         <Text style={styles.message}>
           The moment you're looking for seems to have been lost in the shadows.
         </Text>
-        
-        <TouchableOpacity 
-          style={styles.homeButton}
-          onPress={() => router.push('/')}
-        >
+
+        <TouchableOpacity style={styles.homeButton} onPress={() => router.push('/')}>
           <Text style={styles.homeButtonText}>Return Home</Text>
         </TouchableOpacity>
       </View>

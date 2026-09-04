@@ -1,0 +1,2 @@
+# Powered by OnSpace.AI — garde-fou rapide : ne touche qu'aux fichiers indexés.
+pnpm exec lint-staged

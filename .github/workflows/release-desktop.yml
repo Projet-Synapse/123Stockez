@@ -1,0 +1,114 @@
+# Powered by OnSpace.AI — desktop release pipeline
+#
+# Tag a commit (`git tag v1.2.0 && git push --tags`) to build installers for
+# Linux, macOS and Windows and publish them to GitHub Releases. electron-updater
+# reads that same release feed, so a published tag is what the in-app update
+# tracker picks up.
+name: Release desktop
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run verify
+
+  build:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: --linux
+          - os: macos-latest
+            target: --mac
+          - os: windows-latest
+            target: --win
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install build tooling
+        run: pnpm install --frozen-lockfile
+
+      - name: Install desktop runtime deps
+        run: pnpm install --dir desktop
+
+      # Secrets override the committed .env when they are set. Writing the file
+      # rather than exporting env vars matters: an unset secret expands to an
+      # empty string, and a real (empty) env var would shadow the .env value
+      # that Expo would otherwise have used.
+      - name: Override .env from secrets
+        if: env.SUPABASE_URL != ''
+        shell: bash
+        run: |
+          {
+            echo "EXPO_PUBLIC_SUPABASE_URL=$SUPABASE_URL"
+            echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
+          } > .env
+
+      - name: Build and publish
+        run: node scripts/build-desktop.js --publish ${{ matrix.target }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS signing — optional; an unsigned dmg still installs after a
+          # Gatekeeper prompt.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+
+  announce:
+    needs: build
+    runs-on: ubuntu-latest
+    # Without the service role key there is nothing to write to; the installers
+    # are already published, so this must not fail the release.
+    env:
+      SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Publish to app_versions
+        if: env.SERVICE_ROLE_KEY != ''
+        run: node scripts/publish-version.js --platforms linux,macos,windows --notes "${{ github.ref_name }}"
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Skipped
+        if: env.SERVICE_ROLE_KEY == ''
+        run: echo "SUPABASE_SERVICE_ROLE_KEY absent — annonce app_versions ignorée."

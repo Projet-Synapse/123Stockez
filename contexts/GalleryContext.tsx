@@ -2,9 +2,19 @@
 import React, { createContext, useState, useCallback, ReactNode } from 'react';
 import { Group, Album, Photo } from '@/types';
 import {
-  getGroups, saveGroup, deleteGroup,
-  getAlbums, getAllAlbums, saveAlbum, deleteAlbum,
-  getPhotos, getAllPhotos, addPhotoToAlbum, updatePhoto, deletePhoto, movePhotoToAlbum,
+  getGroups,
+  saveGroup,
+  deleteGroup,
+  getAlbums,
+  getAllAlbums,
+  saveAlbum,
+  deleteAlbum,
+  getPhotos,
+  getAllPhotos,
+  addPhotoToAlbum,
+  updatePhoto,
+  deletePhoto,
+  movePhotoToAlbum,
 } from '@/services/storage';
 import { Colors } from '@/constants/theme';
 
@@ -86,7 +96,7 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
     setGroups((prev) => prev.map((g) => (g.id === group.id ? saved : g)));
   }, []);
 
-  const removeGroup = useCallback(async (groupId: string, userId: string) => {
+  const removeGroup = useCallback(async (groupId: string, _userId: string) => {
     await deleteGroup(groupId);
     setGroups((prev) => prev.filter((g) => g.id !== groupId));
     setAlbums((prev) => prev.filter((a) => a.groupId !== groupId));
@@ -94,21 +104,24 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
     setAllPhotos((prev) => prev.filter((p) => p.groupId !== groupId));
   }, []);
 
-  const addAlbum = useCallback(async (userId: string, groupId: string, name: string, description?: string): Promise<Album> => {
-    const newAlbum: Album = {
-      id: `album_${Date.now()}`,
-      groupId,
-      name,
-      description,
-      photoCount: 0,
-      createdAt: new Date().toISOString(),
-      userId,
-    };
-    const saved = await saveAlbum(newAlbum);
-    setAlbums((prev) => [saved, ...prev]);
-    setGroups((prev) => prev.map((g) => g.id === groupId ? { ...g, albumCount: g.albumCount + 1 } : g));
-    return saved;
-  }, []);
+  const addAlbum = useCallback(
+    async (userId: string, groupId: string, name: string, description?: string): Promise<Album> => {
+      const newAlbum: Album = {
+        id: `album_${Date.now()}`,
+        groupId,
+        name,
+        description,
+        photoCount: 0,
+        createdAt: new Date().toISOString(),
+        userId,
+      };
+      const saved = await saveAlbum(newAlbum);
+      setAlbums((prev) => [saved, ...prev]);
+      setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, albumCount: g.albumCount + 1 } : g)));
+      return saved;
+    },
+    [],
+  );
 
   const updateAlbum = useCallback(async (album: Album) => {
     const saved = await saveAlbum(album);
@@ -120,52 +133,80 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
     setAlbums((prev) => prev.filter((a) => a.id !== albumId));
     setPhotos((prev) => prev.filter((p) => p.albumId !== albumId));
     setAllPhotos((prev) => prev.filter((p) => p.albumId !== albumId));
-    setGroups((prev) => prev.map((g) => g.id === groupId ? { ...g, albumCount: Math.max(0, g.albumCount - 1) } : g));
+    setGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, albumCount: Math.max(0, g.albumCount - 1) } : g)),
+    );
   }, []);
 
-  const addPhoto = useCallback(async (userId: string, albumId: string, groupId: string, uri: string, name: string): Promise<Photo> => {
-    const photo = await addPhotoToAlbum(userId, albumId, groupId, uri, name);
-    setPhotos((prev) => [photo, ...prev]);
-    setAllPhotos((prev) => [photo, ...prev]);
-    setAlbums((prev) => prev.map((a) => a.id === albumId ? { ...a, photoCount: a.photoCount + 1, coverPhoto: photo.uri } : a));
-    setGroups((prev) => prev.map((g) => g.id === groupId ? { ...g, coverPhoto: g.coverPhoto ?? photo.uri } : g));
-    return photo;
-  }, []);
+  const addPhoto = useCallback(
+    async (userId: string, albumId: string, groupId: string, uri: string, name: string): Promise<Photo> => {
+      const photo = await addPhotoToAlbum(userId, albumId, groupId, uri, name);
+      setPhotos((prev) => [photo, ...prev]);
+      setAllPhotos((prev) => [photo, ...prev]);
+      setAlbums((prev) =>
+        prev.map((a) =>
+          a.id === albumId ? { ...a, photoCount: a.photoCount + 1, coverPhoto: photo.uri } : a,
+        ),
+      );
+      setGroups((prev) =>
+        prev.map((g) => (g.id === groupId ? { ...g, coverPhoto: g.coverPhoto ?? photo.uri } : g)),
+      );
+      return photo;
+    },
+    [],
+  );
 
   const renamePhoto = useCallback(async (photo: Photo, newName: string) => {
     const updated = { ...photo, name: newName };
     await updatePhoto(updated);
-    setPhotos((prev) => prev.map((p) => p.id === photo.id ? updated : p));
-    setAllPhotos((prev) => prev.map((p) => p.id === photo.id ? updated : p));
+    setPhotos((prev) => prev.map((p) => (p.id === photo.id ? updated : p)));
+    setAllPhotos((prev) => prev.map((p) => (p.id === photo.id ? updated : p)));
   }, []);
 
   const movePhoto = useCallback(async (photo: Photo, targetAlbum: Album) => {
-    await movePhotoToAlbum(photo.id, photo.albumId, targetAlbum.id, targetAlbum.groupId);
+    await movePhotoToAlbum(photo.id, targetAlbum.id, targetAlbum.groupId);
     const updated = { ...photo, albumId: targetAlbum.id, groupId: targetAlbum.groupId };
     setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
-    setAllPhotos((prev) => prev.map((p) => p.id === photo.id ? updated : p));
+    setAllPhotos((prev) => prev.map((p) => (p.id === photo.id ? updated : p)));
     setAlbums((prev) =>
-      prev.map((a) =>
-        a.id === photo.albumId ? { ...a, photoCount: Math.max(0, a.photoCount - 1) } : a
-      )
+      prev.map((a) => (a.id === photo.albumId ? { ...a, photoCount: Math.max(0, a.photoCount - 1) } : a)),
     );
   }, []);
 
-  const removePhoto = useCallback(async (photoId: string, albumId: string, groupId: string) => {
-    await deletePhoto(photoId, albumId, groupId);
+  const removePhoto = useCallback(async (photoId: string, albumId: string, _groupId: string) => {
+    await deletePhoto(photoId);
     setPhotos((prev) => prev.filter((p) => p.id !== photoId));
     setAllPhotos((prev) => prev.filter((p) => p.id !== photoId));
-    setAlbums((prev) => prev.map((a) => a.id === albumId ? { ...a, photoCount: Math.max(0, a.photoCount - 1) } : a));
+    setAlbums((prev) =>
+      prev.map((a) => (a.id === albumId ? { ...a, photoCount: Math.max(0, a.photoCount - 1) } : a)),
+    );
   }, []);
 
   return (
-    <GalleryContext.Provider value={{
-      groups, albums, photos, allPhotos, allAlbums,
-      loadGroups, loadAlbums, loadPhotos, loadAllPhotos, loadAllAlbums,
-      addGroup, updateGroup, removeGroup,
-      addAlbum, updateAlbum, removeAlbum,
-      addPhoto, renamePhoto, movePhoto, removePhoto,
-    }}>
+    <GalleryContext.Provider
+      value={{
+        groups,
+        albums,
+        photos,
+        allPhotos,
+        allAlbums,
+        loadGroups,
+        loadAlbums,
+        loadPhotos,
+        loadAllPhotos,
+        loadAllAlbums,
+        addGroup,
+        updateGroup,
+        removeGroup,
+        addAlbum,
+        updateAlbum,
+        removeAlbum,
+        addPhoto,
+        renamePhoto,
+        movePhoto,
+        removePhoto,
+      }}
+    >
       {children}
     </GalleryContext.Provider>
   );

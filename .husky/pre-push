@@ -1,0 +1,25 @@
+# Powered by OnSpace.AI — garde-fou complet avant publication.
+#
+# Rejoue exactement ce que la CI exécutera, pour qu'un push ne casse jamais
+# main : types, règles ESLint, puis mise en forme. Contourner ponctuellement :
+#   git push --no-verify
+echo "▸ Vérification avant push (typecheck · lint · format)…"
+
+if ! pnpm run typecheck; then
+  echo "✗ Erreurs TypeScript — push interrompu."
+  exit 1
+fi
+
+# --max-warnings=0 serait trop strict ici : 31 avertissements exhaustive-deps
+# préexistants sont tolérés, mais aucune erreur ne passe.
+if ! pnpm exec eslint .; then
+  echo "✗ Erreurs ESLint — corrigez-les ou lancez 'pnpm run lint:fix'."
+  exit 1
+fi
+
+if ! pnpm run format:check; then
+  echo "✗ Mise en forme non conforme — lancez 'pnpm run format'."
+  exit 1
+fi
+
+echo "✓ Tout est vert, push en cours."

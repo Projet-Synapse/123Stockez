@@ -1,0 +1,13 @@
+node_modules
+dist
+web-build
+.expo
+android
+ios
+desktop/build
+desktop/renderer
+desktop/node_modules
+release
+pnpm-lock.yaml
+assets
+template

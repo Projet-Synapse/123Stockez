@@ -1,8 +1,6 @@
 // Powered by OnSpace.AI — Move Photo Sheet
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -58,21 +56,32 @@ export function MovePhotoSheet({ visible, onClose, currentAlbumId, userId, onMov
       {/* Cover */}
       <View style={[styles.albumThumb, { backgroundColor: item.groupColor + '33' }]}>
         {item.coverPhoto ? (
-          <Image source={{ uri: item.coverPhoto }} style={styles.albumThumb} contentFit="cover" transition={150} />
+          <Image
+            source={{ uri: item.coverPhoto }}
+            style={styles.albumThumb}
+            contentFit="cover"
+            transition={150}
+          />
         ) : (
           <MaterialIcons name="photo-album" size={24} color={item.groupColor} />
         )}
       </View>
       {/* Info */}
       <View style={styles.albumInfo}>
-        <Text style={styles.albumName} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.albumName} numberOfLines={1}>
+          {item.name}
+        </Text>
         <View style={styles.groupTag}>
           <View style={[styles.groupDot, { backgroundColor: item.groupColor }]} />
-          <Text style={styles.groupName} numberOfLines={1}>{item.groupName}</Text>
+          <Text style={styles.groupName} numberOfLines={1}>
+            {item.groupName}
+          </Text>
         </View>
       </View>
       {/* Count */}
-      <Text style={styles.photoCount}>{item.photoCount} photo{item.photoCount !== 1 ? 's' : ''}</Text>
+      <Text style={styles.photoCount}>
+        {item.photoCount} photo{item.photoCount !== 1 ? 's' : ''}
+      </Text>
       <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
     </Pressable>
   );
@@ -101,19 +110,28 @@ export function MovePhotoSheet({ visible, onClose, currentAlbumId, userId, onMov
 
 const styles = StyleSheet.create({
   albumRow: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    paddingVertical: Spacing.sm, borderRadius: Radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.md,
   },
   albumRowPressed: { backgroundColor: Colors.surfaceCard },
   albumThumb: {
-    width: 52, height: 52, borderRadius: Radius.sm,
-    backgroundColor: Colors.surfaceCard, alignItems: 'center', justifyContent: 'center',
+    width: 52,
+    height: 52,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surfaceCard,
+    alignItems: 'center',
+    justifyContent: 'center',
     overflow: 'hidden',
   },
   albumInfo: { flex: 1, gap: 2 },
   albumName: {
-    color: Colors.textPrimary, fontSize: Typography.sizes.base,
-    fontWeight: Typography.weights.semibold, includeFontPadding: false,
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
   },
   groupTag: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
   groupDot: { width: 8, height: 8, borderRadius: 4 },

@@ -1,6 +1,16 @@
 // Powered by OnSpace.AI — All Photos Screen
 import React, { useEffect, useCallback, useState, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, TextInput, Dimensions, RefreshControl, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  Dimensions,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,7 +29,7 @@ export default function AllPhotosScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { allPhotos, loadAllPhotos, removePhoto, renamePhoto } = useGallery();
+  const { allPhotos, loadAllPhotos, removePhoto } = useGallery();
   const { showAlert } = useAlert();
 
   const screenWidth = Dimensions.get('window').width;
@@ -62,25 +72,15 @@ export default function AllPhotosScreen() {
         onPress: () =>
           showAlert('Supprimer cette photo ?', 'Cette action est irréversible.', [
             { text: 'Annuler', style: 'cancel' },
-            { text: 'Supprimer', style: 'destructive', onPress: () => removePhoto(photo.id, photo.albumId, photo.groupId) },
+            {
+              text: 'Supprimer',
+              style: 'destructive',
+              onPress: () => removePhoto(photo.id, photo.albumId, photo.groupId),
+            },
           ]),
       },
     ]);
   }, []);
-
-  const renderPhoto = useCallback(({ item }: { item: Photo }) => (
-    <PhotoThumbnail
-      photo={item}
-      size={photoSize}
-      onPress={() =>
-        router.push({
-          pathname: '/viewer',
-          params: { photoUri: item.uri, photoName: item.name, photoId: item.id, albumName: '' },
-        })
-      }
-      onLongPress={() => handleLongPress(item)}
-    />
-  ), [photoSize, handleLongPress]);
 
   const filteredPhotos = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -110,7 +110,9 @@ export default function AllPhotosScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Toutes les photos</Text>
         {allPhotos.length > 0 ? (
-          <Text style={styles.count}>{allPhotos.length} photo{allPhotos.length > 1 ? 's' : ''}</Text>
+          <Text style={styles.count}>
+            {allPhotos.length} photo{allPhotos.length > 1 ? 's' : ''}
+          </Text>
         ) : null}
       </View>
 
@@ -140,47 +142,67 @@ export default function AllPhotosScreen() {
                 returnKeyType="search"
               />
               {search.length > 0 ? (
-                <Pressable onPress={() => setSearch('')} hitSlop={8} accessibilityRole="button" accessibilityLabel="Effacer la recherche">
+                <Pressable
+                  onPress={() => setSearch('')}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Effacer la recherche"
+                >
                   <MaterialIcons name="close" size={18} color={Colors.textMuted} />
                 </Pressable>
               ) : null}
             </View>
           ) : null}
           <FlatList
-          data={grouped}
-          keyExtractor={(item) => item.title}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
-          ListEmptyComponent={
-            <EmptyState title="Aucun résultat" subtitle={`Aucune photo ne correspond à "${search}".`} />
-          }
-          renderItem={({ item: section }) => (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <MaterialIcons name="calendar-today" size={14} color={Colors.textMuted} />
-                <Text style={styles.sectionTitle}>{section.title}</Text>
-                <Text style={styles.sectionCount}>{section.data.length}</Text>
+            data={grouped}
+            keyExtractor={(item) => item.title}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={Colors.primary}
+                colors={[Colors.primary]}
+              />
+            }
+            ListEmptyComponent={
+              <EmptyState title="Aucun résultat" subtitle={`Aucune photo ne correspond à "${search}".`} />
+            }
+            renderItem={({ item: section }) => (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <MaterialIcons name="calendar-today" size={14} color={Colors.textMuted} />
+                  <Text style={styles.sectionTitle}>{section.title}</Text>
+                  <Text style={styles.sectionCount}>{section.data.length}</Text>
+                </View>
+                <View style={styles.grid}>
+                  {section.data.map((photo, idx) => (
+                    <View
+                      key={photo.id}
+                      style={[styles.photoCell, idx % NUM_COLS !== NUM_COLS - 1 && { marginRight: GAP }]}
+                    >
+                      <PhotoThumbnail
+                        photo={photo}
+                        size={photoSize}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/viewer',
+                            params: {
+                              photoUri: photo.uri,
+                              photoName: photo.name,
+                              photoId: photo.id,
+                              albumName: '',
+                            },
+                          })
+                        }
+                        onLongPress={() => handleLongPress(photo)}
+                      />
+                    </View>
+                  ))}
+                </View>
               </View>
-              <View style={styles.grid}>
-                {section.data.map((photo, idx) => (
-                  <View key={photo.id} style={[styles.photoCell, idx % NUM_COLS !== NUM_COLS - 1 && { marginRight: GAP }]}>
-                    <PhotoThumbnail
-                      photo={photo}
-                      size={photoSize}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/viewer',
-                          params: { photoUri: photo.uri, photoName: photo.name, photoId: photo.id, albumName: '' },
-                        })
-                      }
-                      onLongPress={() => handleLongPress(photo)}
-                    />
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
+            )}
           />
         </>
       )}
@@ -191,27 +213,53 @@ export default function AllPhotosScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   header: {
-    flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
   },
-  title: { color: Colors.textPrimary, fontSize: Typography.sizes.xxl, fontWeight: Typography.weights.bold, includeFontPadding: false },
+  title: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.xxl,
+    fontWeight: Typography.weights.bold,
+    includeFontPadding: false,
+  },
   count: { color: Colors.textMuted, fontSize: Typography.sizes.sm, includeFontPadding: false },
   emptyWrapper: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   searchBar: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    marginHorizontal: Spacing.lg, marginBottom: Spacing.md,
-    backgroundColor: Colors.surfaceCard, borderWidth: 1, borderColor: Colors.border,
-    borderRadius: Radius.md, paddingHorizontal: Spacing.md, height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    height: 44,
   },
-  searchInput: { flex: 1, color: Colors.textPrimary, fontSize: Typography.sizes.base, includeFontPadding: false },
+  searchInput: {
+    flex: 1,
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    includeFontPadding: false,
+  },
   section: { marginBottom: Spacing.lg },
   sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
   },
   sectionTitle: {
-    color: Colors.textSecondary, fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.semibold, flex: 1, includeFontPadding: false,
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    flex: 1,
+    includeFontPadding: false,
     textTransform: 'capitalize',
   },
   sectionCount: { color: Colors.textMuted, fontSize: Typography.sizes.xs, includeFontPadding: false },

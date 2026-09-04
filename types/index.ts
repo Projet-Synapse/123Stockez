@@ -46,17 +46,6 @@ export interface Carnet {
   createdAt: string;
 }
 
-export interface CarnetEntry {
-  id: string;
-  carnetId: string;
-  userId: string;
-  uri: string;
-  name: string;
-  description: string;
-  fieldValues: { fieldId: string; value: string }[];
-  createdAt: string;
-}
-
 export interface Photo {
   id: string;
   albumId: string;

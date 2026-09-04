@@ -1,0 +1,14 @@
+{
+  "name": "stockez-desktop",
+  "productName": "123Stockez",
+  "version": "1.1.0",
+  "description": "123Stockez — coffre-fort photo multiplateforme",
+  "main": "main.js",
+  "author": "123Stockez",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "electron-log": "^5.2.0",
+    "electron-updater": "^6.3.9"
+  }
+}

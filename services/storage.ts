@@ -1,30 +1,21 @@
-// Powered by OnSpace.AI — Supabase Storage Service
+// Powered by OnSpace.AI — Supabase data access layer
+//
+// Every read is scoped by user or by parent id; row-level security in
+// supabase/migrations/0001_init.sql enforces the same scoping server-side.
+// Counters (album_count / photo_count / entry_count) and cover photos are
+// maintained by database triggers, so this layer never writes them.
 import { getSupabaseClient } from '@/template';
 import { Group, Album, Photo, Carnet, CarnetEntry, CarnetField } from '@/types';
-import * as FileSystem from 'expo-file-system';
-import { decode } from 'base64-arraybuffer';
-import { Colors } from '@/constants/theme';
+import { GroupRow, AlbumRow, PhotoRow, CarnetRow, CarnetEntryRow, CarnetFieldRow } from '@/types/database';
+import { uploadImage, removeImages, getPublicUrl } from '@/services/upload';
 
 const sb = () => getSupabaseClient();
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-async function uploadImage(uri: string, userId: string, prefix: string): Promise<string> {
-  const ext = uri.split('.').pop()?.split('?')[0] ?? 'jpg';
-  const path = `${userId}/${prefix}_${Date.now()}.${ext}`;
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-  const { error } = await sb().storage.from('photos').upload(path, decode(base64), {
-    contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-    upsert: false,
-  });
-  if (error) throw new Error(error.message);
-  return path;
-}
+export { getPublicUrl };
 
-export function getPublicUrl(storagePath: string): string {
-  if (!storagePath) return '';
-  if (storagePath.startsWith('http')) return storagePath;
-  const { data } = sb().storage.from('photos').getPublicUrl(storagePath);
-  return data.publicUrl;
+/** Ids minted client-side before a first save use these prefixes. */
+function isDraftId(id: string | undefined, prefix: string): boolean {
+  return !id || id.startsWith(`${prefix}_`);
 }
 
 // ── Groups ───────────────────────────────────────────────────────────────────
@@ -40,30 +31,36 @@ export async function getGroups(userId: string): Promise<Group[]> {
 
 export async function saveGroup(group: Group): Promise<Group> {
   const row = {
-    id: group.id.startsWith('group_') ? undefined : group.id,
     user_id: group.userId,
     name: group.name,
     description: group.description ?? null,
     color: group.color,
-    cover_photo: group.coverPhoto ?? null,
-    album_count: group.albumCount,
   };
-  if (group.id.startsWith('group_') || !group.id) {
+
+  if (isDraftId(group.id, 'group')) {
     const { data, error } = await sb().from('groups').insert(row).select().single();
     if (error) throw new Error(error.message);
     return rowToGroup(data);
   }
-  const { data, error } = await sb().from('groups').upsert({ ...row, id: group.id }).select().single();
+
+  const { data, error } = await sb().from('groups').update(row).eq('id', group.id).select().single();
   if (error) throw new Error(error.message);
   return rowToGroup(data);
 }
 
 export async function deleteGroup(groupId: string): Promise<void> {
+  const paths = await collectGroupStoragePaths(groupId);
   const { error } = await sb().from('groups').delete().eq('id', groupId);
   if (error) throw new Error(error.message);
+  await removeImages(paths);
 }
 
-function rowToGroup(r: any): Group {
+async function collectGroupStoragePaths(groupId: string): Promise<string[]> {
+  const { data } = await sb().from('photos').select('storage_path').eq('group_id', groupId);
+  return (data ?? []).map((r: { storage_path: string }) => r.storage_path);
+}
+
+function rowToGroup(r: GroupRow): Group {
   return {
     id: r.id,
     userId: r.user_id,
@@ -103,25 +100,28 @@ export async function saveAlbum(album: Album): Promise<Album> {
     group_id: album.groupId,
     name: album.name,
     description: album.description ?? null,
-    cover_photo: album.coverPhoto ?? null,
-    photo_count: album.photoCount,
   };
-  if (!album.id || album.id.startsWith('album_')) {
+
+  if (isDraftId(album.id, 'album')) {
     const { data, error } = await sb().from('albums').insert(row).select().single();
     if (error) throw new Error(error.message);
     return rowToAlbum(data);
   }
-  const { data, error } = await sb().from('albums').upsert({ ...row, id: album.id }).select().single();
+
+  const { data, error } = await sb().from('albums').update(row).eq('id', album.id).select().single();
   if (error) throw new Error(error.message);
   return rowToAlbum(data);
 }
 
 export async function deleteAlbum(albumId: string): Promise<void> {
+  const { data } = await sb().from('photos').select('storage_path').eq('album_id', albumId);
+  const paths = (data ?? []).map((r: { storage_path: string }) => r.storage_path);
   const { error } = await sb().from('albums').delete().eq('id', albumId);
   if (error) throw new Error(error.message);
+  await removeImages(paths);
 }
 
-function rowToAlbum(r: any): Album {
+function rowToAlbum(r: AlbumRow): Album {
   return {
     id: r.id,
     userId: r.user_id,
@@ -155,60 +155,59 @@ export async function getAllPhotos(userId: string): Promise<Photo[]> {
   return (data ?? []).map(rowToPhoto);
 }
 
-export async function addPhotoToAlbum(userId: string, albumId: string, groupId: string, localUri: string, name: string): Promise<Photo> {
+export async function addPhotoToAlbum(
+  userId: string,
+  albumId: string,
+  groupId: string,
+  localUri: string,
+  name: string,
+): Promise<Photo> {
   const storagePath = await uploadImage(localUri, userId, 'photo');
-  const publicUrl = getPublicUrl(storagePath);
-  const { data, error } = await sb().from('photos').insert({
-    user_id: userId,
-    album_id: albumId,
-    group_id: groupId,
-    storage_path: storagePath,
-    name,
-  }).select().single();
-  if (error) throw new Error(error.message);
-  // update album cover + count
-  await sb().from('albums').update({ photo_count: sb().rpc as any, cover_photo: storagePath })
-    .eq('id', albumId);
-  await _syncAlbumMeta(albumId, groupId);
+
+  const { data, error } = await sb()
+    .from('photos')
+    .insert({
+      user_id: userId,
+      album_id: albumId,
+      group_id: groupId,
+      storage_path: storagePath,
+      name,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    // Do not leave an orphaned object behind if the row insert failed.
+    await removeImages([storagePath]);
+    throw new Error(error.message);
+  }
   return rowToPhoto(data);
 }
 
 export async function updatePhoto(photo: Photo): Promise<void> {
-  const { error } = await sb().from('photos').update({ name: photo.name, caption: photo.caption }).eq('id', photo.id);
+  const { error } = await sb()
+    .from('photos')
+    .update({ name: photo.name, caption: photo.caption ?? null })
+    .eq('id', photo.id);
   if (error) throw new Error(error.message);
 }
 
-export async function deletePhoto(photoId: string, albumId: string, groupId: string): Promise<void> {
+export async function deletePhoto(photoId: string): Promise<void> {
   const { data } = await sb().from('photos').select('storage_path').eq('id', photoId).single();
-  await sb().from('photos').delete().eq('id', photoId);
-  if (data?.storage_path) {
-    await sb().storage.from('photos').remove([data.storage_path]);
-  }
-  await _syncAlbumMeta(albumId, groupId);
-}
-
-export async function movePhotoToAlbum(photoId: string, fromAlbumId: string, toAlbumId: string, toGroupId: string): Promise<void> {
-  const { data: photo } = await sb().from('photos').select('group_id').eq('id', photoId).single();
-  const fromGroupId = photo?.group_id;
-  const { error } = await sb().from('photos').update({ album_id: toAlbumId, group_id: toGroupId }).eq('id', photoId);
+  const { error } = await sb().from('photos').delete().eq('id', photoId);
   if (error) throw new Error(error.message);
-  await _syncAlbumMeta(fromAlbumId, fromGroupId);
-  await _syncAlbumMeta(toAlbumId, toGroupId);
+  if (data?.storage_path) await removeImages([data.storage_path]);
 }
 
-async function _syncAlbumMeta(albumId: string, groupId: string): Promise<void> {
-  const { data: photos } = await sb().from('photos').select('storage_path, created_at').eq('album_id', albumId).order('created_at', { ascending: false });
-  const count = photos?.length ?? 0;
-  const cover = photos?.[0]?.storage_path ?? null;
-  await sb().from('albums').update({ photo_count: count, cover_photo: cover }).eq('id', albumId);
-  // sync group album count
-  const { data: albums } = await sb().from('albums').select('id, cover_photo').eq('group_id', groupId).order('created_at', { ascending: false });
-  const albumCount = albums?.length ?? 0;
-  const groupCover = albums?.find((a: any) => a.cover_photo)?.cover_photo ?? null;
-  await sb().from('groups').update({ album_count: albumCount, cover_photo: groupCover }).eq('id', groupId);
+export async function movePhotoToAlbum(photoId: string, toAlbumId: string, toGroupId: string): Promise<void> {
+  const { error } = await sb()
+    .from('photos')
+    .update({ album_id: toAlbumId, group_id: toGroupId })
+    .eq('id', photoId);
+  if (error) throw new Error(error.message);
 }
 
-function rowToPhoto(r: any): Photo {
+function rowToPhoto(r: PhotoRow): Photo {
   return {
     id: r.id,
     userId: r.user_id,
@@ -221,12 +220,6 @@ function rowToPhoto(r: any): Photo {
     createdAt: r.created_at,
   };
 }
-
-// Legacy compat
-export async function savePhoto(photo: Photo): Promise<void> { /* no-op, use addPhotoToAlbum */ }
-export async function updatePhotoCountForAlbum(albumId: string): Promise<void> { /* handled server-side */ }
-export async function updateAlbumCountForGroup(groupId: string): Promise<void> { /* handled server-side */ }
-export async function deleteAlbum2(albumId: string): Promise<void> { await deleteAlbum(albumId); }
 
 // ── Carnets ──────────────────────────────────────────────────────────────────
 export async function getCarnets(userId: string): Promise<Carnet[]> {
@@ -245,47 +238,53 @@ export async function saveCarnet(carnet: Carnet): Promise<Carnet> {
     name: carnet.name,
     description: carnet.description ?? null,
     emoji: carnet.emoji,
-    entry_count: carnet.entryCount,
-    cover_photo: carnet.coverPhoto ?? null,
   };
-  let carnetId: string;
-  if (!carnet.id || carnet.id.startsWith('carnet_')) {
+
+  if (isDraftId(carnet.id, 'carnet')) {
     const { data, error } = await sb().from('carnets').insert(row).select().single();
     if (error) throw new Error(error.message);
-    carnetId = data.id;
-    // insert fields
-    if (carnet.fields.length > 0) {
-      const fieldRows = carnet.fields.map((f, i) => ({
-        carnet_id: carnetId,
-        label: f.label,
-        type: f.type,
-        position: i,
-      }));
-      const { data: fData, error: fErr } = await sb().from('carnet_fields').insert(fieldRows).select();
-      if (fErr) throw new Error(fErr.message);
-      // return with real field IDs
-      return {
-        ...carnet,
-        id: carnetId,
-        fields: (fData ?? []).map((f: any) => ({ id: f.id, label: f.label, type: f.type as 'text' | 'number' })),
-      };
-    }
-    return { ...carnet, id: carnetId, fields: [] };
+    const created = data as CarnetRow;
+    const fields = await insertCarnetFields(created.id, carnet.fields);
+    return { ...rowToCarnet(created), fields };
   }
-  const { error } = await sb().from('carnets').update(row).eq('id', carnet.id);
+
+  const { data, error } = await sb()
+    .from('carnets')
+    .update(row)
+    .eq('id', carnet.id)
+    .select('*, carnet_fields(*)')
+    .single();
   if (error) throw new Error(error.message);
-  return carnet;
+  return rowToCarnet(data);
+}
+
+async function insertCarnetFields(carnetId: string, fields: CarnetField[]): Promise<CarnetField[]> {
+  if (fields.length === 0) return [];
+  const rows = fields.map((f, position) => ({
+    carnet_id: carnetId,
+    label: f.label,
+    type: f.type,
+    position,
+  }));
+  const { data, error } = await sb().from('carnet_fields').insert(rows).select();
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(fieldRowToField);
 }
 
 export async function deleteCarnet(carnetId: string): Promise<void> {
+  const { data } = await sb().from('carnet_entries').select('storage_path').eq('carnet_id', carnetId);
+  const paths = (data ?? []).map((r: { storage_path: string }) => r.storage_path);
   const { error } = await sb().from('carnets').delete().eq('id', carnetId);
   if (error) throw new Error(error.message);
+  await removeImages(paths);
 }
 
-function rowToCarnet(r: any): Carnet {
-  const fields: CarnetField[] = (r.carnet_fields ?? [])
-    .sort((a: any, b: any) => a.position - b.position)
-    .map((f: any) => ({ id: f.id, label: f.label, type: f.type as 'text' | 'number' }));
+function fieldRowToField(f: CarnetFieldRow): CarnetField {
+  return { id: f.id, label: f.label, type: f.type };
+}
+
+function rowToCarnet(r: CarnetRow): Carnet {
+  const fields = [...(r.carnet_fields ?? [])].sort((a, b) => a.position - b.position).map(fieldRowToField);
   return {
     id: r.id,
     userId: r.user_id,
@@ -299,7 +298,7 @@ function rowToCarnet(r: any): Carnet {
   };
 }
 
-// ── Carnet Entries ────────────────────────────────────────────────────────────
+// ── Carnet entries ───────────────────────────────────────────────────────────
 export async function getCarnetEntries(carnetId: string): Promise<CarnetEntry[]> {
   const { data, error } = await sb()
     .from('carnet_entries')
@@ -311,61 +310,61 @@ export async function getCarnetEntries(carnetId: string): Promise<CarnetEntry[]>
 }
 
 export async function saveCarnetEntry(entry: CarnetEntry): Promise<CarnetEntry> {
-  const row = {
-    carnet_id: entry.carnetId,
-    user_id: entry.userId,
-    name: entry.name,
-    description: entry.description,
-  };
-
-  let entryId: string;
-  if (!entry.id || entry.id.startsWith('entry_')) {
-    // upload image first
+  if (isDraftId(entry.id, 'entry')) {
     const storagePath = await uploadImage(entry.uri, entry.userId, 'carnet');
-    const { data, error } = await sb().from('carnet_entries').insert({ ...row, storage_path: storagePath }).select().single();
-    if (error) throw new Error(error.message);
-    entryId = data.id;
-    // insert field values
-    if (entry.fieldValues.length > 0) {
-      const valRows = entry.fieldValues.map((fv) => ({ entry_id: entryId, field_id: fv.fieldId, value: fv.value }));
-      await sb().from('carnet_entry_values').insert(valRows);
+    const { data, error } = await sb()
+      .from('carnet_entries')
+      .insert({
+        carnet_id: entry.carnetId,
+        user_id: entry.userId,
+        name: entry.name,
+        description: entry.description,
+        storage_path: storagePath,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      await removeImages([storagePath]);
+      throw new Error(error.message);
     }
-    await _syncCarnetMeta(entry.carnetId, storagePath);
-    return { ...entry, id: entryId, uri: getPublicUrl(storagePath) };
+
+    await upsertEntryValues(data.id, entry.fieldValues);
+    return { ...entry, id: data.id, storagePath, uri: getPublicUrl(storagePath) };
   }
-  // update
-  const { error } = await sb().from('carnet_entries').update({ name: entry.name, description: entry.description }).eq('id', entry.id);
+
+  const { error } = await sb()
+    .from('carnet_entries')
+    .update({ name: entry.name, description: entry.description })
+    .eq('id', entry.id);
   if (error) throw new Error(error.message);
-  entryId = entry.id;
-  // upsert field values
-  for (const fv of entry.fieldValues) {
-    await sb().from('carnet_entry_values').upsert({ entry_id: entryId, field_id: fv.fieldId, value: fv.value });
-  }
+
+  await upsertEntryValues(entry.id, entry.fieldValues);
   return entry;
 }
 
-export async function deleteCarnetEntry(entryId: string, carnetId: string): Promise<void> {
+async function upsertEntryValues(
+  entryId: string,
+  fieldValues: { fieldId: string; value: string }[],
+): Promise<void> {
+  if (fieldValues.length === 0) return;
+  const rows = fieldValues.map((fv) => ({
+    entry_id: entryId,
+    field_id: fv.fieldId,
+    value: fv.value,
+  }));
+  const { error } = await sb().from('carnet_entry_values').upsert(rows, { onConflict: 'entry_id,field_id' });
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteCarnetEntry(entryId: string): Promise<void> {
   const { data } = await sb().from('carnet_entries').select('storage_path').eq('id', entryId).single();
-  await sb().from('carnet_entries').delete().eq('id', entryId);
-  if (data?.storage_path) {
-    await sb().storage.from('photos').remove([data.storage_path]);
-  }
-  await _syncCarnetMeta(carnetId, null);
+  const { error } = await sb().from('carnet_entries').delete().eq('id', entryId);
+  if (error) throw new Error(error.message);
+  if (data?.storage_path) await removeImages([data.storage_path]);
 }
 
-async function _syncCarnetMeta(carnetId: string, newCover: string | null): Promise<void> {
-  const { data: entries } = await sb()
-    .from('carnet_entries')
-    .select('storage_path, created_at')
-    .eq('carnet_id', carnetId)
-    .order('created_at', { ascending: false });
-  const count = entries?.length ?? 0;
-  const cover = entries?.[0]?.storage_path ?? newCover ?? null;
-  await sb().from('carnets').update({ entry_count: count, cover_photo: cover }).eq('id', carnetId);
-}
-
-function rowToEntry(r: any): CarnetEntry {
-  const fieldValues = (r.carnet_entry_values ?? []).map((v: any) => ({ fieldId: v.field_id, value: v.value }));
+function rowToEntry(r: CarnetEntryRow): CarnetEntry {
   return {
     id: r.id,
     carnetId: r.carnet_id,
@@ -373,8 +372,8 @@ function rowToEntry(r: any): CarnetEntry {
     uri: getPublicUrl(r.storage_path),
     storagePath: r.storage_path,
     name: r.name,
-    description: r.description,
-    fieldValues,
+    description: r.description ?? '',
+    fieldValues: (r.carnet_entry_values ?? []).map((v) => ({ fieldId: v.field_id, value: v.value })),
     createdAt: r.created_at,
   };
 }
