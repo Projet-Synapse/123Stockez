@@ -1,6 +1,6 @@
 // Powered by OnSpace.AI — All Photos Screen
-import React, { useEffect, useCallback, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, Dimensions, RefreshControl } from 'react-native';
+import React, { useEffect, useCallback, useState, useMemo } from 'react';
+import { View, Text, FlatList, StyleSheet, Pressable, TextInput, Dimensions, RefreshControl, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGallery } from '@/hooks/useGallery';
 import { useAlert } from '@/template';
 import { PhotoThumbnail, EmptyState } from '@/components';
-import { Colors, Typography, Spacing } from '@/constants/theme';
+import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { Photo } from '@/types';
 
 const NUM_COLS = 3;
@@ -25,9 +25,13 @@ export default function AllPhotosScreen() {
   const screenWidth = Dimensions.get('window').width;
   const photoSize = Math.floor((screenWidth - GAP * (NUM_COLS - 1)) / NUM_COLS);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
-    if (user) loadAllPhotos(user.id);
+    if (!user) return;
+    setLoading(true);
+    loadAllPhotos(user.id).finally(() => setLoading(false));
   }, [user]);
 
   const handleRefresh = useCallback(async () => {
@@ -78,11 +82,17 @@ export default function AllPhotosScreen() {
     />
   ), [photoSize, handleLongPress]);
 
+  const filteredPhotos = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return allPhotos;
+    return allPhotos.filter((p) => p.name.toLowerCase().includes(q));
+  }, [allPhotos, search]);
+
   // Group photos by month
   const grouped = React.useMemo(() => {
     const sections: { title: string; data: Photo[] }[] = [];
     const map = new Map<string, Photo[]>();
-    for (const p of allPhotos) {
+    for (const p of filteredPhotos) {
       const d = new Date(p.createdAt);
       const key = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
       if (!map.has(key)) map.set(key, []);
@@ -90,7 +100,7 @@ export default function AllPhotosScreen() {
     }
     map.forEach((data, title) => sections.push({ title, data }));
     return sections;
-  }, [allPhotos]);
+  }, [filteredPhotos]);
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -104,7 +114,11 @@ export default function AllPhotosScreen() {
         ) : null}
       </View>
 
-      {allPhotos.length === 0 ? (
+      {loading && allPhotos.length === 0 ? (
+        <View style={styles.emptyWrapper}>
+          <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
+      ) : allPhotos.length === 0 ? (
         <View style={styles.emptyWrapper}>
           <EmptyState
             title="Aucune photo"
@@ -112,12 +126,35 @@ export default function AllPhotosScreen() {
           />
         </View>
       ) : (
-        <FlatList
+        <>
+          {allPhotos.length > 6 ? (
+            <View style={styles.searchBar}>
+              <MaterialIcons name="search" size={20} color={Colors.textMuted} />
+              <TextInput
+                style={styles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Rechercher une photo..."
+                placeholderTextColor={Colors.textMuted}
+                accessibilityLabel="Rechercher une photo"
+                returnKeyType="search"
+              />
+              {search.length > 0 ? (
+                <Pressable onPress={() => setSearch('')} hitSlop={8} accessibilityRole="button" accessibilityLabel="Effacer la recherche">
+                  <MaterialIcons name="close" size={18} color={Colors.textMuted} />
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+          <FlatList
           data={grouped}
           keyExtractor={(item) => item.title}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
+          ListEmptyComponent={
+            <EmptyState title="Aucun résultat" subtitle={`Aucune photo ne correspond à "${search}".`} />
+          }
           renderItem={({ item: section }) => (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -144,7 +181,8 @@ export default function AllPhotosScreen() {
               </View>
             </View>
           )}
-        />
+          />
+        </>
       )}
     </View>
   );
@@ -158,7 +196,14 @@ const styles = StyleSheet.create({
   },
   title: { color: Colors.textPrimary, fontSize: Typography.sizes.xxl, fontWeight: Typography.weights.bold, includeFontPadding: false },
   count: { color: Colors.textMuted, fontSize: Typography.sizes.sm, includeFontPadding: false },
-  emptyWrapper: { flex: 1 },
+  emptyWrapper: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    marginHorizontal: Spacing.lg, marginBottom: Spacing.md,
+    backgroundColor: Colors.surfaceCard, borderWidth: 1, borderColor: Colors.border,
+    borderRadius: Radius.md, paddingHorizontal: Spacing.md, height: 44,
+  },
+  searchInput: { flex: 1, color: Colors.textPrimary, fontSize: Typography.sizes.base, includeFontPadding: false },
   section: { marginBottom: Spacing.lg },
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
