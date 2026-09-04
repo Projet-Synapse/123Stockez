@@ -1,6 +1,16 @@
 // Powered by OnSpace.AI — Photos Screen
-import React, { useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, Share, Dimensions } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  Share,
+  Dimensions,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,10 +41,24 @@ export default function PhotosScreen() {
 
   const screenWidth = Dimensions.get('window').width;
   const photoSize = Math.floor((screenWidth - Spacing.lg * 2 - GAP * (NUM_COLS - 1)) / NUM_COLS);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (albumId) loadPhotos(albumId);
+    if (!albumId) return;
+    setLoading(true);
+    loadPhotos(albumId).finally(() => setLoading(false));
   }, [albumId]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!albumId) return;
+    setRefreshing(true);
+    try {
+      await loadPhotos(albumId);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [albumId, loadPhotos]);
 
   const handleAddPhoto = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -106,50 +130,84 @@ export default function PhotosScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
+        >
           <MaterialIcons name="arrow-back" size={24} color={Colors.textPrimary} />
         </Pressable>
         <Text style={styles.title} numberOfLines={1}>
           {albumName}
         </Text>
         <View style={styles.headerActions}>
-          <Pressable onPress={handleShareAlbum} style={styles.iconBtn} hitSlop={8}>
+          <Pressable
+            onPress={handleShareAlbum}
+            style={styles.iconBtn}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Partager l'album"
+          >
             <MaterialIcons name="share" size={22} color={Colors.textSecondary} />
           </Pressable>
-          <Pressable onPress={handleAddPhoto} style={styles.iconBtn} hitSlop={8}>
+          <Pressable
+            onPress={handleAddPhoto}
+            style={styles.iconBtn}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Ajouter des photos"
+          >
             <MaterialIcons name="add-photo-alternate" size={24} color={Colors.textPrimary} />
           </Pressable>
         </View>
       </View>
 
-      <FlatList
-        data={photos}
-        keyExtractor={(item) => item.id}
-        renderItem={renderPhoto}
-        numColumns={NUM_COLS}
-        contentContainerStyle={[styles.grid, photos.length === 0 && { flex: 1 }]}
-        columnWrapperStyle={{ gap: GAP }}
-        ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          photos.length > 0 ? (
-            <Text style={styles.meta}>
-              {photos.length} photo{photos.length > 1 ? 's' : ''}
-            </Text>
-          ) : null
-        }
-        ListEmptyComponent={
-          <EmptyState
-            title="Aucune photo"
-            subtitle="Appuyez sur + pour ajouter des photos depuis votre téléphone."
-          />
-        }
-      />
+      {loading && photos.length === 0 ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={accentColor} size="large" />
+        </View>
+      ) : (
+        <FlatList
+          data={photos}
+          keyExtractor={(item) => item.id}
+          renderItem={renderPhoto}
+          numColumns={NUM_COLS}
+          contentContainerStyle={[styles.grid, photos.length === 0 && { flex: 1 }]}
+          columnWrapperStyle={{ gap: GAP }}
+          ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={accentColor}
+              colors={[accentColor]}
+            />
+          }
+          ListHeaderComponent={
+            photos.length > 0 ? (
+              <Text style={styles.meta}>
+                {photos.length} photo{photos.length > 1 ? 's' : ''}
+              </Text>
+            ) : null
+          }
+          ListEmptyComponent={
+            <EmptyState
+              title="Aucune photo"
+              subtitle="Appuyez sur + pour ajouter des photos depuis votre téléphone."
+            />
+          }
+        />
+      )}
 
       {/* FAB add photo */}
       <Pressable
         style={[styles.fab, { bottom: insets.bottom + Spacing.lg, backgroundColor: accentColor }]}
         onPress={handleAddPhoto}
+        accessibilityRole="button"
+        accessibilityLabel="Ajouter des photos"
       >
         <MaterialIcons name="add-photo-alternate" size={28} color={Colors.textPrimary} />
       </Pressable>
@@ -176,6 +234,7 @@ const styles = StyleSheet.create({
   },
   headerActions: { flexDirection: 'row', gap: Spacing.xs },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   meta: {
     color: Colors.textMuted,
     fontSize: Typography.sizes.sm,

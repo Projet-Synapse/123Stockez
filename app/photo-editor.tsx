@@ -209,7 +209,13 @@ export default function PhotoEditorScreen() {
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.iconBtn} hitSlop={10}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.iconBtn}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Fermer l'éditeur"
+        >
           <MaterialIcons name="close" size={24} color={Colors.textPrimary} />
         </Pressable>
         <Text style={styles.topTitle} numberOfLines={1}>
@@ -217,12 +223,24 @@ export default function PhotoEditorScreen() {
         </Text>
         <View style={styles.topRight}>
           {hasEdits ? (
-            <Pressable onPress={handleUndo} style={styles.iconBtn} hitSlop={10}>
+            <Pressable
+              onPress={handleUndo}
+              style={styles.iconBtn}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Annuler la dernière modification"
+            >
               <MaterialIcons name="undo" size={22} color={Colors.textSecondary} />
             </Pressable>
           ) : null}
           {hasEdits ? (
-            <Pressable onPress={handleClearAll} style={styles.iconBtn} hitSlop={10}>
+            <Pressable
+              onPress={handleClearAll}
+              style={styles.iconBtn}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Effacer toutes les modifications"
+            >
               <MaterialIcons name="delete-sweep" size={22} color={Colors.textSecondary} />
             </Pressable>
           ) : null}

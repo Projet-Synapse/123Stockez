@@ -1,5 +1,5 @@
 // Powered by OnSpace.AI — Carnets Tab (list of all carnets)
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -58,10 +60,31 @@ export default function CarnetsScreen() {
   const [newFieldLabel, setNewFieldLabel] = useState('');
   const [newFieldType, setNewFieldType] = useState<'text' | 'number'>('text');
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) loadCarnets(user.id);
+    if (!user) return;
+    setLoading(true);
+    loadCarnets(user.id).finally(() => setLoading(false));
   }, [user]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!user) return;
+    setRefreshing(true);
+    try {
+      await loadCarnets(user.id);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [user, loadCarnets]);
+
+  const filteredCarnets = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return carnets;
+    return carnets.filter((c) => c.name.toLowerCase().includes(q));
+  }, [carnets, search]);
 
   const addField = useCallback(() => {
     const label = newFieldLabel.trim();
@@ -150,43 +173,102 @@ export default function CarnetsScreen() {
           <Text style={styles.subtitle}>Mes collections</Text>
           <Text style={styles.title}>Carnets</Text>
         </View>
-        <Pressable style={styles.addBtn} onPress={() => setModalVisible(true)} hitSlop={8}>
+        <Pressable
+          style={styles.addBtn}
+          onPress={() => setModalVisible(true)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Créer un carnet"
+        >
           <MaterialIcons name="add" size={24} color={Colors.textPrimary} />
         </Pressable>
       </View>
 
-      {carnets.length > 0 ? (
-        <View style={styles.statsBar}>
-          <Text style={styles.statsText}>
-            {carnets.length} carnet{carnets.length > 1 ? 's' : ''}
-          </Text>
-          <Text style={styles.statsText}>·</Text>
-          <Text style={styles.statsText}>{carnets.reduce((acc, c) => acc + c.entryCount, 0)} entrées</Text>
+      {loading && carnets.length === 0 ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={Colors.primary} size="large" />
         </View>
-      ) : null}
+      ) : (
+        <>
+          {carnets.length > 0 ? (
+            <View style={styles.statsBar}>
+              <Text style={styles.statsText}>
+                {carnets.length} carnet{carnets.length > 1 ? 's' : ''}
+              </Text>
+              <Text style={styles.statsText}>·</Text>
+              <Text style={styles.statsText}>
+                {carnets.reduce((acc, c) => acc + c.entryCount, 0)} entrées
+              </Text>
+            </View>
+          ) : null}
 
-      <FlatList
-        data={carnets}
-        keyExtractor={(item) => item.id}
-        renderItem={renderCarnet}
-        numColumns={2}
-        contentContainerStyle={[styles.list, carnets.length === 0 && { flex: 1 }]}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <EmptyState
-            title="Aucun carnet"
-            subtitle={
-              'Créez un carnet pour organiser vos photos avec des informations personnalisées (plantes, recettes, animaux...)'
+          {/* Search */}
+          {carnets.length > 3 ? (
+            <View style={styles.searchBar}>
+              <MaterialIcons name="search" size={20} color={Colors.textMuted} />
+              <TextInput
+                style={styles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Rechercher un carnet..."
+                placeholderTextColor={Colors.textMuted}
+                accessibilityLabel="Rechercher un carnet"
+                returnKeyType="search"
+              />
+              {search.length > 0 ? (
+                <Pressable
+                  onPress={() => setSearch('')}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Effacer la recherche"
+                >
+                  <MaterialIcons name="close" size={18} color={Colors.textMuted} />
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+
+          <FlatList
+            data={filteredCarnets}
+            keyExtractor={(item) => item.id}
+            renderItem={renderCarnet}
+            numColumns={2}
+            contentContainerStyle={[styles.list, filteredCarnets.length === 0 && { flex: 1 }]}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={Colors.primary}
+                colors={[Colors.primary]}
+              />
+            }
+            ListEmptyComponent={
+              carnets.length > 0 ? (
+                <EmptyState title="Aucun résultat" subtitle={`Aucun carnet ne correspond à "${search}".`} />
+              ) : (
+                <EmptyState
+                  title="Aucun carnet"
+                  subtitle={
+                    'Créez un carnet pour organiser vos photos avec des informations personnalisées (plantes, recettes, animaux...)'
+                  }
+                />
+              )
             }
           />
-        }
-      />
 
-      {carnets.length > 0 ? (
-        <Pressable style={[styles.fab, { bottom: insets.bottom + 80 }]} onPress={() => setModalVisible(true)}>
-          <MaterialIcons name="add" size={28} color={Colors.textPrimary} />
-        </Pressable>
-      ) : null}
+          {carnets.length > 0 ? (
+            <Pressable
+              style={[styles.fab, { bottom: insets.bottom + 80 }]}
+              onPress={() => setModalVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Créer un carnet"
+            >
+              <MaterialIcons name="add" size={28} color={Colors.textPrimary} />
+            </Pressable>
+          ) : null}
+        </>
+      )}
 
       {/* Create carnet modal */}
       <Modal
@@ -210,6 +292,8 @@ export default function CarnetsScreen() {
                   resetForm();
                 }}
                 hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Fermer"
               >
                 <MaterialIcons name="close" size={22} color={Colors.textSecondary} />
               </Pressable>
@@ -344,6 +428,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   statsBar: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -351,6 +436,25 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   statsText: { color: Colors.textMuted, fontSize: Typography.sizes.sm },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    height: 44,
+  },
+  searchInput: {
+    flex: 1,
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    includeFontPadding: false,
+  },
   list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
   cardWrapper: { flex: 1, marginBottom: Spacing.md },
   fab: {

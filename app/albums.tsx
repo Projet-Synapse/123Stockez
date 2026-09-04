@@ -1,6 +1,6 @@
 // Powered by OnSpace.AI — Albums Screen
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable, RefreshControl, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,10 +29,24 @@ export default function AlbumsScreen() {
   const [albumName, setAlbumName] = useState('');
   const [albumDesc, setAlbumDesc] = useState('');
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (groupId) loadAlbums(groupId);
+    if (!groupId) return;
+    setLoading(true);
+    loadAlbums(groupId).finally(() => setLoading(false));
   }, [groupId]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!groupId) return;
+    setRefreshing(true);
+    try {
+      await loadAlbums(groupId);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [groupId, loadAlbums]);
 
   const handleCreate = useCallback(async () => {
     if (!albumName.trim()) {
@@ -90,7 +104,13 @@ export default function AlbumsScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
+        >
           <MaterialIcons name="arrow-back" size={24} color={Colors.textPrimary} />
         </Pressable>
         <View style={styles.headerCenter}>
@@ -99,38 +119,62 @@ export default function AlbumsScreen() {
             {groupName}
           </Text>
         </View>
-        <Pressable style={styles.addBtn} onPress={() => setSheetVisible(true)} hitSlop={8}>
+        <Pressable
+          style={styles.addBtn}
+          onPress={() => setSheetVisible(true)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Créer un album"
+        >
           <MaterialIcons name="add" size={24} color={Colors.textPrimary} />
         </Pressable>
       </View>
 
-      <FlatList
-        data={albums}
-        keyExtractor={(item) => item.id}
-        renderItem={renderAlbum}
-        numColumns={2}
-        contentContainerStyle={[styles.list, albums.length === 0 && { flex: 1 }]}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          albums.length > 0 ? (
-            <Text style={styles.meta}>
-              {albums.length} album{albums.length > 1 ? 's' : ''}
-            </Text>
-          ) : null
-        }
-        ListEmptyComponent={
-          <EmptyState title="Aucun album" subtitle="Ajoutez votre premier album dans ce groupe." />
-        }
-      />
+      {loading && albums.length === 0 ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={accentColor} size="large" />
+        </View>
+      ) : (
+        <>
+          <FlatList
+            data={albums}
+            keyExtractor={(item) => item.id}
+            renderItem={renderAlbum}
+            numColumns={2}
+            contentContainerStyle={[styles.list, albums.length === 0 && { flex: 1 }]}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={accentColor}
+                colors={[accentColor]}
+              />
+            }
+            ListHeaderComponent={
+              albums.length > 0 ? (
+                <Text style={styles.meta}>
+                  {albums.length} album{albums.length > 1 ? 's' : ''}
+                </Text>
+              ) : null
+            }
+            ListEmptyComponent={
+              <EmptyState title="Aucun album" subtitle="Ajoutez votre premier album dans ce groupe." />
+            }
+          />
 
-      {albums.length > 0 ? (
-        <Pressable
-          style={[styles.fab, { bottom: insets.bottom + Spacing.lg, backgroundColor: accentColor }]}
-          onPress={() => setSheetVisible(true)}
-        >
-          <MaterialIcons name="add" size={28} color={Colors.textPrimary} />
-        </Pressable>
-      ) : null}
+          {albums.length > 0 ? (
+            <Pressable
+              style={[styles.fab, { bottom: insets.bottom + Spacing.lg, backgroundColor: accentColor }]}
+              onPress={() => setSheetVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Créer un album"
+            >
+              <MaterialIcons name="add" size={28} color={Colors.textPrimary} />
+            </Pressable>
+          ) : null}
+        </>
+      )}
 
       <BottomSheet visible={sheetVisible} title="Nouvel album" onClose={() => setSheetVisible(false)}>
         <View style={styles.form}>
@@ -186,6 +230,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   meta: {
     color: Colors.textMuted,
     fontSize: Typography.sizes.sm,
