@@ -20,7 +20,7 @@ files:
 # Releases; electron-updater reads that same feed at runtime.
 publish:
   provider: github
-  owner: catelyn2332-design
+  owner: Projet-Synapse
   repo: 123Stockez
   releaseType: release
 
