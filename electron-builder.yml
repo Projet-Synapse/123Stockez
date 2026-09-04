@@ -29,7 +29,6 @@ linux:
     - AppImage
     - deb
   category: Graphics
-  icon: assets/images/logo.png
   synopsis: Coffre-fort photo et carnets
   desktop:
     entry:
@@ -40,7 +39,6 @@ mac:
     - target: dmg
       arch: [x64, arm64]
   category: public.app-category.photography
-  icon: assets/images/logo.png
   # Set CSC_LINK / CSC_KEY_PASSWORD in CI to sign; unsigned builds still run
   # locally after the Gatekeeper prompt.
   hardenedRuntime: true
@@ -52,7 +50,6 @@ win:
   target:
     - target: nsis
       arch: [x64]
-  icon: assets/images/logo.png
 
 nsis:
   oneClick: false
