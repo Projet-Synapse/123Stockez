@@ -86,20 +86,20 @@ export default function ViewerScreen() {
       {/* Top bar */}
       {uiVisible ? (
         <View style={[styles.topBar, { paddingTop: insets.top + Spacing.sm }]}>
-          <Pressable onPress={() => router.back()} style={styles.iconBtn} hitSlop={12}>
+          <Pressable onPress={() => router.back()} style={styles.iconBtn} hitSlop={12} accessibilityRole="button" accessibilityLabel="Retour">
             <MaterialIcons name="arrow-back" size={24} color={Colors.textPrimary} />
           </Pressable>
-          <Pressable style={styles.titleBlock} onPress={openRename} hitSlop={8}>
+          <Pressable style={styles.titleBlock} onPress={openRename} hitSlop={8} accessibilityRole="button" accessibilityLabel="Renommer la photo">
             <Text style={styles.photoName} numberOfLines={1}>{displayName}</Text>
             <Text style={styles.albumName}>{albumName}</Text>
           </Pressable>
-          <Pressable onPress={openRename} style={styles.iconBtn} hitSlop={12}>
+          <Pressable onPress={openRename} style={styles.iconBtn} hitSlop={12} accessibilityRole="button" accessibilityLabel="Renommer">
             <MaterialIcons name="edit" size={22} color={Colors.textSecondary} />
           </Pressable>
-          <Pressable onPress={() => setMoveVisible(true)} style={styles.iconBtn} hitSlop={12}>
+          <Pressable onPress={() => setMoveVisible(true)} style={styles.iconBtn} hitSlop={12} accessibilityRole="button" accessibilityLabel="Déplacer la photo">
             <MaterialIcons name="drive-file-move" size={22} color={Colors.textSecondary} />
           </Pressable>
-          <Pressable onPress={handleShare} style={styles.iconBtn} hitSlop={12}>
+          <Pressable onPress={handleShare} style={styles.iconBtn} hitSlop={12} accessibilityRole="button" accessibilityLabel="Partager la photo">
             <MaterialIcons name="share" size={24} color={Colors.textPrimary} />
           </Pressable>
         </View>

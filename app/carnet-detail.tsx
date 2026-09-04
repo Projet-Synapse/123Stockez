@@ -1,7 +1,7 @@
 // Powered by OnSpace.AI — Carnet Detail (entries list)
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, Pressable,
+  View, Text, FlatList, StyleSheet, Pressable, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -27,10 +27,13 @@ export default function CarnetDetailScreen() {
   const { showAlert } = useAlert();
 
   const [carnet, setCarnet] = useState<Carnet | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (carnetId) loadEntries(carnetId);
-    loadCarnetMeta();
+    if (!carnetId) return;
+    setLoading(true);
+    Promise.all([loadEntries(carnetId), loadCarnetMeta()]).finally(() => setLoading(false));
   }, [carnetId]);
 
   const loadCarnetMeta = async () => {
@@ -39,6 +42,16 @@ export default function CarnetDetailScreen() {
     const found = all.find((c) => c.id === carnetId);
     if (found) setCarnet(found);
   };
+
+  const handleRefresh = useCallback(async () => {
+    if (!carnetId) return;
+    setRefreshing(true);
+    try {
+      await Promise.all([loadEntries(carnetId), loadCarnetMeta()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [carnetId, loadEntries]);
 
   const handleAddEntry = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -101,7 +114,7 @@ export default function CarnetDetailScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retour">
           <MaterialIcons name="arrow-back" size={24} color={Colors.textPrimary} />
         </Pressable>
         <Text style={styles.emoji}>{emoji}</Text>
@@ -109,7 +122,7 @@ export default function CarnetDetailScreen() {
           <Text style={styles.title} numberOfLines={1}>{carnetName}</Text>
           <Text style={styles.meta}>{entries.length} entrée{entries.length !== 1 ? 's' : ''}</Text>
         </View>
-        <Pressable style={styles.addBtn} onPress={handleAddEntry} hitSlop={8}>
+        <Pressable style={styles.addBtn} onPress={handleAddEntry} hitSlop={8} accessibilityRole="button" accessibilityLabel="Ajouter une entrée">
           <MaterialIcons name="add" size={24} color={Colors.textPrimary} />
         </Pressable>
       </View>
@@ -124,23 +137,30 @@ export default function CarnetDetailScreen() {
         </View>
       ) : null}
 
-      <FlatList
-        data={entries}
-        keyExtractor={(item) => item.id}
-        renderItem={renderEntry}
-        contentContainerStyle={[styles.list, entries.length === 0 && { flex: 1 }]}
-        showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
-        ListEmptyComponent={
-          <EmptyState
-            title="Aucune entrée"
-            subtitle={"Ajoutez votre première photo avec ses informations personnalisées."}
-          />
-        }
-      />
+      {loading && entries.length === 0 ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
+      ) : (
+        <FlatList
+          data={entries}
+          keyExtractor={(item) => item.id}
+          renderItem={renderEntry}
+          contentContainerStyle={[styles.list, entries.length === 0 && { flex: 1 }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
+          ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
+          ListEmptyComponent={
+            <EmptyState
+              title="Aucune entrée"
+              subtitle={"Ajoutez votre première photo avec ses informations personnalisées."}
+            />
+          }
+        />
+      )}
 
       {entries.length > 0 ? (
-        <Pressable style={[styles.fab, { bottom: insets.bottom + Spacing.lg }]} onPress={handleAddEntry}>
+        <Pressable style={[styles.fab, { bottom: insets.bottom + Spacing.lg }]} onPress={handleAddEntry} accessibilityRole="button" accessibilityLabel="Ajouter une entrée">
           <MaterialIcons name="add" size={28} color={Colors.textPrimary} />
         </Pressable>
       ) : null}
@@ -172,6 +192,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md,
   },
   fieldsBarText: { color: Colors.textMuted, fontSize: Typography.sizes.xs },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xxl },
   fab: {
     position: 'absolute', right: Spacing.lg,
