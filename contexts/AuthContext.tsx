@@ -1,6 +1,14 @@
 // Powered by OnSpace.AI — Real Supabase Auth Context
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import { Platform } from 'react-native';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import { getSupabaseClient } from '@/template';
+import { desktop, isDesktop, isNative } from '@/services/platform';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const OAUTH_SCHEME = 'onspaceapp';
 
 interface AppUser {
   id: string;
@@ -38,9 +46,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  // Desktop OAuth returns through the onspaceapp:// protocol handler rather
+  // than an in-window redirect, because Google refuses embedded browsers.
+  useEffect(() => {
+    const bridge = desktop();
+    if (!bridge) return;
+    return bridge.onAuthCallback(async (url) => {
+      const code = new URL(url).searchParams.get('code');
+      if (!code) return;
+      const { error } = await getSupabaseClient().auth.exchangeCodeForSession(code);
+      if (error) console.warn('[Auth] Échange du code OAuth impossible:', error.message);
+    });
+  }, []);
+
   const loginWithGoogle = async () => {
-    const { error } = await getSupabaseClient().auth.signInWithOAuth({ provider: 'google' });
+    const sb = getSupabaseClient();
+
+    // Browser: let Supabase drive the redirect in place.
+    if (Platform.OS === 'web' && !isDesktop()) {
+      const { error } = await sb.auth.signInWithOAuth({ provider: 'google' });
+      if (error) throw new Error(error.message);
+      return;
+    }
+
+    const redirectTo = isDesktop()
+      ? `${OAUTH_SCHEME}://auth`
+      : AuthSession.makeRedirectUri({ scheme: OAUTH_SCHEME, path: 'auth' });
+
+    const { data, error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
     if (error) throw new Error(error.message);
+    if (!data?.url) throw new Error("URL d'authentification Google indisponible");
+
+    // Desktop: hand the URL to the system browser; the protocol handler in
+    // desktop/main.js delivers the callback back to the effect above.
+    if (isDesktop()) {
+      await desktop()?.openExternal(data.url);
+      return;
+    }
+
+    if (isNative()) {
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (result.type !== 'success') {
+        if (result.type === 'cancel' || result.type === 'dismiss') return;
+        throw new Error('Connexion Google interrompue');
+      }
+      const code = new URL(result.url).searchParams.get('code');
+      if (!code) throw new Error("Aucun code d'autorisation reçu");
+      const { error: exchangeError } = await sb.auth.exchangeCodeForSession(code);
+      if (exchangeError) throw new Error(exchangeError.message);
+    }
   };
 
   const loginWithPassword = async (email: string, password: string) => {
@@ -70,7 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, loginWithGoogle, loginWithPassword, signUp, sendOTP, verifyOTP, signOut }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, loginWithGoogle, loginWithPassword, signUp, sendOTP, verifyOTP, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

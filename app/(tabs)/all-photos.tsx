@@ -1,6 +1,6 @@
 // Powered by OnSpace.AI — All Photos Screen
 import React, { useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,7 +19,7 @@ export default function AllPhotosScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { allPhotos, loadAllPhotos, removePhoto, renamePhoto } = useGallery();
+  const { allPhotos, loadAllPhotos, removePhoto } = useGallery();
   const { showAlert } = useAlert();
 
   const screenWidth = Dimensions.get('window').width;
@@ -47,25 +47,15 @@ export default function AllPhotosScreen() {
         onPress: () =>
           showAlert('Supprimer cette photo ?', 'Cette action est irréversible.', [
             { text: 'Annuler', style: 'cancel' },
-            { text: 'Supprimer', style: 'destructive', onPress: () => removePhoto(photo.id, photo.albumId, photo.groupId) },
+            {
+              text: 'Supprimer',
+              style: 'destructive',
+              onPress: () => removePhoto(photo.id, photo.albumId, photo.groupId),
+            },
           ]),
       },
     ]);
   }, []);
-
-  const renderPhoto = useCallback(({ item }: { item: Photo }) => (
-    <PhotoThumbnail
-      photo={item}
-      size={photoSize}
-      onPress={() =>
-        router.push({
-          pathname: '/viewer',
-          params: { photoUri: item.uri, photoName: item.name, photoId: item.id, albumName: '' },
-        })
-      }
-      onLongPress={() => handleLongPress(item)}
-    />
-  ), [photoSize, handleLongPress]);
 
   // Group photos by month
   const grouped = React.useMemo(() => {
@@ -89,7 +79,9 @@ export default function AllPhotosScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Toutes les photos</Text>
         {allPhotos.length > 0 ? (
-          <Text style={styles.count}>{allPhotos.length} photo{allPhotos.length > 1 ? 's' : ''}</Text>
+          <Text style={styles.count}>
+            {allPhotos.length} photo{allPhotos.length > 1 ? 's' : ''}
+          </Text>
         ) : null}
       </View>
 
@@ -115,14 +107,22 @@ export default function AllPhotosScreen() {
               </View>
               <View style={styles.grid}>
                 {section.data.map((photo, idx) => (
-                  <View key={photo.id} style={[styles.photoCell, idx % NUM_COLS !== NUM_COLS - 1 && { marginRight: GAP }]}>
+                  <View
+                    key={photo.id}
+                    style={[styles.photoCell, idx % NUM_COLS !== NUM_COLS - 1 && { marginRight: GAP }]}
+                  >
                     <PhotoThumbnail
                       photo={photo}
                       size={photoSize}
                       onPress={() =>
                         router.push({
                           pathname: '/viewer',
-                          params: { photoUri: photo.uri, photoName: photo.name, photoId: photo.id, albumName: '' },
+                          params: {
+                            photoUri: photo.uri,
+                            photoName: photo.name,
+                            photoId: photo.id,
+                            albumName: '',
+                          },
                         })
                       }
                       onLongPress={() => handleLongPress(photo)}
@@ -141,20 +141,34 @@ export default function AllPhotosScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   header: {
-    flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
   },
-  title: { color: Colors.textPrimary, fontSize: Typography.sizes.xxl, fontWeight: Typography.weights.bold, includeFontPadding: false },
+  title: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.xxl,
+    fontWeight: Typography.weights.bold,
+    includeFontPadding: false,
+  },
   count: { color: Colors.textMuted, fontSize: Typography.sizes.sm, includeFontPadding: false },
   emptyWrapper: { flex: 1 },
   section: { marginBottom: Spacing.lg },
   sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
   },
   sectionTitle: {
-    color: Colors.textSecondary, fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.semibold, flex: 1, includeFontPadding: false,
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    flex: 1,
+    includeFontPadding: false,
     textTransform: 'capitalize',
   },
   sectionCount: { color: Colors.textMuted, fontSize: Typography.sizes.xs, includeFontPadding: false },

@@ -2,7 +2,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
-import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, Radius, Shadows } from '@/constants/theme';
 import { CarnetEntry, CarnetField } from '@/types';
 
@@ -23,20 +22,19 @@ export function CarnetEntryCard({ entry, fields, onPress, onLongPress }: CarnetE
       onLongPress={onLongPress}
     >
       {/* Photo */}
-      <Image
-        source={{ uri: entry.uri }}
-        style={styles.photo}
-        contentFit="cover"
-        transition={200}
-      />
+      <Image source={{ uri: entry.uri }} style={styles.photo} contentFit="cover" transition={200} />
 
       {/* Content */}
       <View style={styles.content}>
-        <Text style={styles.name} numberOfLines={1}>{entry.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {entry.name}
+        </Text>
 
         {/* Description */}
         {entry.description ? (
-          <Text style={styles.desc} numberOfLines={2}>{entry.description}</Text>
+          <Text style={styles.desc} numberOfLines={2}>
+            {entry.description}
+          </Text>
         ) : null}
 
         {/* Fields */}
@@ -48,7 +46,9 @@ export function CarnetEntryCard({ entry, fields, onPress, onLongPress }: CarnetE
               return (
                 <View key={fv.fieldId} style={styles.fieldBadge}>
                   <Text style={styles.fieldLabel}>{field.label}</Text>
-                  <Text style={styles.fieldValue} numberOfLines={1}>{fv.value}</Text>
+                  <Text style={styles.fieldValue} numberOfLines={1}>
+                    {fv.value}
+                  </Text>
                 </View>
               );
             })}
@@ -62,7 +62,11 @@ export function CarnetEntryCard({ entry, fields, onPress, onLongPress }: CarnetE
 
         {/* Date */}
         <Text style={styles.date}>
-          {new Date(entry.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+          {new Date(entry.createdAt).toLocaleDateString('fr-FR', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })}
         </Text>
       </View>
     </Pressable>

@@ -1,8 +1,17 @@
 // Powered by OnSpace.AI — Photo Editor
 import React, { useState, useRef, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, Dimensions, ScrollView,
-  TextInput, Modal, KeyboardAvoidingView, Platform, PanResponder,
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Dimensions,
+  ScrollView,
+  TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  PanResponder,
   GestureResponderEvent,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -15,7 +24,6 @@ import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import { useAlert } from '@/template';
 import { useGallery } from '@/hooks/useGallery';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { Photo } from '@/types';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Tool = 'none' | 'draw' | 'text';
@@ -38,14 +46,14 @@ interface TextOverlay {
 
 // ─── Filter definitions ───────────────────────────────────────────────────────
 const FILTERS = [
-  { id: 'normal',   label: 'Original',  overlay: 'transparent',         opacity: 0 },
-  { id: 'warm',     label: 'Chaud',     overlay: 'rgba(255,150,50,0.25)', opacity: 1 },
-  { id: 'cool',     label: 'Froid',     overlay: 'rgba(50,150,255,0.25)', opacity: 1 },
-  { id: 'sepia',    label: 'Sépia',     overlay: 'rgba(180,130,70,0.35)', opacity: 1 },
-  { id: 'noir',     label: 'Noir & B',  overlay: 'rgba(20,20,20,0.55)',   opacity: 1 },
-  { id: 'rose',     label: 'Rose',      overlay: 'rgba(255,100,180,0.25)',opacity: 1 },
-  { id: 'dream',    label: 'Dream',     overlay: 'rgba(150,80,255,0.30)', opacity: 1 },
-  { id: 'golden',   label: 'Golden',    overlay: 'rgba(255,210,0,0.30)',  opacity: 1 },
+  { id: 'normal', label: 'Original', overlay: 'transparent', opacity: 0 },
+  { id: 'warm', label: 'Chaud', overlay: 'rgba(255,150,50,0.25)', opacity: 1 },
+  { id: 'cool', label: 'Froid', overlay: 'rgba(50,150,255,0.25)', opacity: 1 },
+  { id: 'sepia', label: 'Sépia', overlay: 'rgba(180,130,70,0.35)', opacity: 1 },
+  { id: 'noir', label: 'Noir & B', overlay: 'rgba(20,20,20,0.55)', opacity: 1 },
+  { id: 'rose', label: 'Rose', overlay: 'rgba(255,100,180,0.25)', opacity: 1 },
+  { id: 'dream', label: 'Dream', overlay: 'rgba(150,80,255,0.30)', opacity: 1 },
+  { id: 'golden', label: 'Golden', overlay: 'rgba(255,210,0,0.30)', opacity: 1 },
 ];
 
 const DRAW_COLORS = ['#FFFFFF', '#FF6B6B', '#FDCB6E', '#55EFC4', '#74B9FF', '#A29BFE', '#FD79A8', '#000000'];
@@ -57,7 +65,7 @@ const EDITOR_H = SCREEN_H * 0.55;
 export default function PhotoEditorScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { photoUri, photoName, photoId, albumId } = useLocalSearchParams<{
+  const { photoUri, photoName, photoId } = useLocalSearchParams<{
     photoUri: string;
     photoName: string;
     photoId: string;
@@ -97,7 +105,8 @@ export default function PhotoEditorScreen() {
     }, '');
   };
 
-  const editorLayout = useRef({ x: 0, y: 0, width: SCREEN_W, height: EDITOR_H });
+  // Reserved for pinch-to-zoom bounds; kept so the layout math stays in one place.
+  const _editorLayout = useRef({ x: 0, y: 0, width: SCREEN_W, height: EDITOR_H });
 
   const panResponder = useRef(
     PanResponder.create({
@@ -125,12 +134,15 @@ export default function PhotoEditorScreen() {
           return [];
         });
       },
-    })
+    }),
   ).current;
 
   // ─── Add text overlay ───────────────────────────────────────────────────────
   const commitText = useCallback(() => {
-    if (!pendingText.trim()) { setTextModalVisible(false); return; }
+    if (!pendingText.trim()) {
+      setTextModalVisible(false);
+      return;
+    }
     setTextOverlays((prev) => [
       ...prev,
       {
@@ -158,7 +170,14 @@ export default function PhotoEditorScreen() {
   const handleClearAll = useCallback(() => {
     showAlert('Effacer tout ?', 'Tous les dessins et textes seront supprimés.', [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Effacer', style: 'destructive', onPress: () => { setPaths([]); setTextOverlays([]); } },
+      {
+        text: 'Effacer',
+        style: 'destructive',
+        onPress: () => {
+          setPaths([]);
+          setTextOverlays([]);
+        },
+      },
     ]);
   }, []);
 
@@ -174,8 +193,8 @@ export default function PhotoEditorScreen() {
       }
       showAlert('Sauvegardé !', 'La photo éditée a été enregistrée.');
       router.back();
-    } catch (e) {
-      showAlert('Erreur', "Impossible de sauvegarder la photo éditée.");
+    } catch {
+      showAlert('Erreur', 'Impossible de sauvegarder la photo éditée.');
     } finally {
       setSaving(false);
     }
@@ -193,7 +212,9 @@ export default function PhotoEditorScreen() {
         <Pressable onPress={() => router.back()} style={styles.iconBtn} hitSlop={10}>
           <MaterialIcons name="close" size={24} color={Colors.textPrimary} />
         </Pressable>
-        <Text style={styles.topTitle} numberOfLines={1}>{photoName}</Text>
+        <Text style={styles.topTitle} numberOfLines={1}>
+          {photoName}
+        </Text>
         <View style={styles.topRight}>
           {hasEdits ? (
             <Pressable onPress={handleUndo} style={styles.iconBtn} hitSlop={10}>
@@ -217,11 +238,7 @@ export default function PhotoEditorScreen() {
 
       {/* ── Photo canvas ────────────────────────────────────────────────── */}
       <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.92 }} style={styles.canvas}>
-        <Image
-          source={{ uri: photoUri }}
-          style={styles.photo}
-          contentFit="cover"
-        />
+        <Image source={{ uri: photoUri }} style={styles.photo} contentFit="cover" />
         {/* Filter overlay */}
         {activeFilter.id !== 'normal' ? (
           <View
@@ -288,10 +305,7 @@ export default function PhotoEditorScreen() {
           </Pressable>
         ) : null}
         {activeTool === 'text' && textOverlays.length > 0 ? (
-          <Pressable
-            style={styles.addMoreTextBtn}
-            onPress={() => setTextModalVisible(true)}
-          >
+          <Pressable style={styles.addMoreTextBtn} onPress={() => setTextModalVisible(true)}>
             <MaterialIcons name="add" size={18} color={Colors.textPrimary} />
             <Text style={styles.addMoreTextLabel}>Ajouter du texte</Text>
           </Pressable>
@@ -317,9 +331,7 @@ export default function PhotoEditorScreen() {
                 size={22}
                 color={activeTool === t.id ? Colors.primary : Colors.textSecondary}
               />
-              <Text style={[styles.toolLabel, activeTool === t.id && styles.toolLabelActive]}>
-                {t.label}
-              </Text>
+              <Text style={[styles.toolLabel, activeTool === t.id && styles.toolLabelActive]}>{t.label}</Text>
             </Pressable>
           ))}
         </View>
@@ -338,14 +350,13 @@ export default function PhotoEditorScreen() {
                 onPress={() => setActiveFilter(f)}
               >
                 <View style={[styles.filterSwatch, { backgroundColor: f.overlay as string }]}>
-                  <Image
-                    source={{ uri: photoUri }}
-                    style={styles.filterThumb}
-                    contentFit="cover"
-                  />
+                  <Image source={{ uri: photoUri }} style={styles.filterThumb} contentFit="cover" />
                   {f.id !== 'normal' ? (
                     <View
-                      style={[StyleSheet.absoluteFill, { backgroundColor: f.overlay as string, borderRadius: Radius.sm }]}
+                      style={[
+                        StyleSheet.absoluteFill,
+                        { backgroundColor: f.overlay as string, borderRadius: Radius.sm },
+                      ]}
                     />
                   ) : null}
                 </View>
@@ -360,7 +371,11 @@ export default function PhotoEditorScreen() {
         {/* ── Draw options ─────────────────────────────────────────────── */}
         {activeTool === 'draw' ? (
           <View style={styles.drawOptions}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.colorRow}
+            >
               {DRAW_COLORS.map((c) => (
                 <Pressable
                   key={c}
@@ -382,7 +397,12 @@ export default function PhotoEditorScreen() {
                     onPress={() => setBrushSize(s)}
                     style={[styles.brushBtn, brushSize === s && styles.brushBtnActive]}
                   >
-                    <View style={[styles.brushPreview, { width: s * 2, height: s * 2, borderRadius: s, backgroundColor: drawColor }]} />
+                    <View
+                      style={[
+                        styles.brushPreview,
+                        { width: s * 2, height: s * 2, borderRadius: s, backgroundColor: drawColor },
+                      ]}
+                    />
                   </Pressable>
                 ))}
               </View>
@@ -393,7 +413,11 @@ export default function PhotoEditorScreen() {
         {/* ── Text options ─────────────────────────────────────────────── */}
         {activeTool === 'text' ? (
           <View style={styles.drawOptions}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.colorRow}
+            >
               {TEXT_COLORS.map((c) => (
                 <Pressable
                   key={c}
@@ -415,7 +439,15 @@ export default function PhotoEditorScreen() {
                     onPress={() => setFontSize(s)}
                     style={[styles.brushBtn, fontSize === s && styles.brushBtnActive]}
                   >
-                    <Text style={{ color: Colors.textPrimary, fontSize: Math.min(s * 0.6, 18), fontWeight: '700' }}>A</Text>
+                    <Text
+                      style={{
+                        color: Colors.textPrimary,
+                        fontSize: Math.min(s * 0.6, 18),
+                        fontWeight: '700',
+                      }}
+                    >
+                      A
+                    </Text>
                   </Pressable>
                 ))}
               </View>
@@ -429,8 +461,16 @@ export default function PhotoEditorScreen() {
       </View>
 
       {/* ── Text input modal ─────────────────────────────────────────────────── */}
-      <Modal visible={textModalVisible} transparent animationType="fade" onRequestClose={() => setTextModalVisible(false)}>
-        <KeyboardAvoidingView style={styles.textModalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <Modal
+        visible={textModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTextModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.textModalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setTextModalVisible(false)} />
           <View style={[styles.textCard, { paddingBottom: insets.bottom + Spacing.lg }]}>
             <View style={styles.textCardHandle} />
@@ -466,17 +506,33 @@ const styles = StyleSheet.create({
 
   // Top bar
   topBar: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.sm, gap: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.sm,
+    gap: Spacing.sm,
   },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { flex: 1, color: Colors.textPrimary, fontSize: Typography.sizes.base, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  topTitle: {
+    flex: 1,
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
   topRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
   saveBtn: {
-    backgroundColor: Colors.primary, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: Radius.full,
   },
-  saveBtnText: { color: Colors.textPrimary, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  saveBtnText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
 
   // Canvas
   canvas: { width: SCREEN_W, height: EDITOR_H, backgroundColor: '#000', overflow: 'hidden' },
@@ -484,24 +540,39 @@ const styles = StyleSheet.create({
   textHint: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
   textHintLabel: { color: 'rgba(255,255,255,0.6)', fontSize: Typography.sizes.sm, includeFontPadding: false },
   addMoreTextBtn: {
-    position: 'absolute', bottom: Spacing.sm, right: Spacing.sm,
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
-    backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs,
+    position: 'absolute',
+    bottom: Spacing.sm,
+    right: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
     borderRadius: Radius.full,
   },
   addMoreTextLabel: { color: Colors.textPrimary, fontSize: Typography.sizes.xs, includeFontPadding: false },
 
   // Tool panel
   toolPanel: {
-    flex: 1, backgroundColor: Colors.surface,
-    borderTopWidth: 1, borderTopColor: Colors.border,
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   toolRow: {
-    flexDirection: 'row', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
-    borderBottomWidth: 1, borderBottomColor: Colors.border, gap: Spacing.sm,
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    gap: Spacing.sm,
   },
   toolBtn: {
-    flex: 1, alignItems: 'center', gap: Spacing.xs, paddingVertical: Spacing.sm,
+    flex: 1,
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
   },
   toolBtnActive: { backgroundColor: Colors.surfaceCard },
@@ -509,7 +580,12 @@ const styles = StyleSheet.create({
   toolLabelActive: { color: Colors.primary },
 
   // Filters
-  filterStrip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, gap: Spacing.sm, alignItems: 'center' },
+  filterStrip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+    alignItems: 'center',
+  },
   filterItem: { alignItems: 'center', gap: Spacing.xs, padding: Spacing.xs, borderRadius: Radius.md },
   filterItemActive: { backgroundColor: Colors.surfaceCard },
   filterSwatch: { width: 60, height: 60, borderRadius: Radius.sm, overflow: 'hidden', position: 'relative' },
@@ -521,50 +597,109 @@ const styles = StyleSheet.create({
   drawOptions: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.md },
   colorRow: { paddingRight: Spacing.md, gap: Spacing.sm, alignItems: 'center', minHeight: 40 },
   colorDot: {
-    width: 32, height: 32, borderRadius: 16,
-    borderWidth: 2, borderColor: 'transparent',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   colorDotActive: { borderColor: Colors.textPrimary, borderWidth: 3 },
   brushRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  optionLabel: { color: Colors.textSecondary, fontSize: Typography.sizes.sm, includeFontPadding: false, width: 90 },
+  optionLabel: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+    includeFontPadding: false,
+    width: 90,
+  },
   brushSizes: { flexDirection: 'row', gap: Spacing.sm },
   brushBtn: {
-    width: 44, height: 44, borderRadius: Radius.md, backgroundColor: Colors.surfaceCard,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border,
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceCard,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   brushBtnActive: { borderColor: Colors.primary, backgroundColor: Colors.surfaceMid },
   brushPreview: {},
   addTextBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    backgroundColor: Colors.primary, borderRadius: Radius.md,
-    paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
     alignSelf: 'flex-start',
   },
-  addTextLabel: { color: Colors.textPrimary, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  addTextLabel: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
 
   // Text modal
   textModalOverlay: { flex: 1, justifyContent: 'flex-end' },
   textCard: {
     backgroundColor: Colors.surface,
-    borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl,
-    paddingTop: Spacing.md, paddingHorizontal: Spacing.lg, gap: Spacing.md,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    paddingTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.md,
   },
-  textCardHandle: { width: 40, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: Spacing.sm },
-  textCardTitle: { color: Colors.textPrimary, fontSize: Typography.sizes.lg, fontWeight: Typography.weights.bold, includeFontPadding: false },
+  textCardHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: Colors.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: Spacing.sm,
+  },
+  textCardTitle: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.bold,
+    includeFontPadding: false,
+  },
   textInput: {
-    backgroundColor: Colors.surfaceCard, borderWidth: 1, borderColor: Colors.border,
-    borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
-    fontSize: Typography.sizes.base, minHeight: 80,
+    backgroundColor: Colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    fontSize: Typography.sizes.base,
+    minHeight: 80,
   },
   textModalActions: { flexDirection: 'row', gap: Spacing.md },
   textCancel: {
-    flex: 1, paddingVertical: Spacing.md, borderRadius: Radius.md,
-    backgroundColor: Colors.surfaceCard, alignItems: 'center',
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceCard,
+    alignItems: 'center',
   },
-  textCancelText: { color: Colors.textSecondary, fontSize: Typography.sizes.base, fontWeight: Typography.weights.medium, includeFontPadding: false },
+  textCancelText: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.medium,
+    includeFontPadding: false,
+  },
   textConfirm: {
-    flex: 1, paddingVertical: Spacing.md, borderRadius: Radius.md,
-    backgroundColor: Colors.primary, alignItems: 'center',
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
   },
-  textConfirmText: { color: Colors.textPrimary, fontSize: Typography.sizes.base, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  textConfirmText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
 });

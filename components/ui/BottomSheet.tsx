@@ -1,6 +1,15 @@
 // Powered by OnSpace.AI
 import React, { ReactNode } from 'react';
-import { View, Text, Modal, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  Modal,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { Colors, Typography, Radius, Spacing } from '@/constants/theme';
 
 interface BottomSheetProps {
@@ -41,9 +50,27 @@ const styles = StyleSheet.create({
     borderTopRightRadius: Radius.xl,
     maxHeight: '85%',
   },
-  handle: { width: 40, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginTop: Spacing.md },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
-  title: { color: Colors.textPrimary, fontSize: Typography.sizes.xl, fontWeight: Typography.weights.bold, includeFontPadding: false },
+  handle: {
+    width: 40,
+    height: 4,
+    backgroundColor: Colors.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: Spacing.md,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  title: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+    includeFontPadding: false,
+  },
   close: { color: Colors.textSecondary, fontSize: Typography.sizes.xl },
   content: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
 });

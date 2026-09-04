@@ -32,3 +32,5 @@ export const PhotoThumbnail = React.memo(({ photo, size, onPress, onLongPress }:
 const styles = StyleSheet.create({
   image: { borderRadius: Radius.sm },
 });
+
+PhotoThumbnail.displayName = 'PhotoThumbnail';

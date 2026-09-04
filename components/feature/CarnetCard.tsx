@@ -42,20 +42,28 @@ export function CarnetCard({ carnet, onPress, onLongPress }: CarnetCardProps) {
         {carnet.fields.length > 0 ? (
           <View style={styles.fieldChip}>
             <MaterialIcons name="label" size={10} color={Colors.textSecondary} />
-            <Text style={styles.fieldChipText}>{carnet.fields.length} champ{carnet.fields.length > 1 ? 's' : ''}</Text>
+            <Text style={styles.fieldChipText}>
+              {carnet.fields.length} champ{carnet.fields.length > 1 ? 's' : ''}
+            </Text>
           </View>
         ) : null}
       </View>
 
       {/* Info */}
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>{carnet.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {carnet.name}
+        </Text>
         {carnet.description ? (
-          <Text style={styles.desc} numberOfLines={1}>{carnet.description}</Text>
+          <Text style={styles.desc} numberOfLines={1}>
+            {carnet.description}
+          </Text>
         ) : null}
         <View style={styles.meta}>
           <MaterialIcons name="menu-book" size={12} color={Colors.textMuted} />
-          <Text style={styles.metaText}>{carnet.entryCount} entrée{carnet.entryCount !== 1 ? 's' : ''}</Text>
+          <Text style={styles.metaText}>
+            {carnet.entryCount} entrée{carnet.entryCount !== 1 ? 's' : ''}
+          </Text>
         </View>
       </View>
     </Pressable>

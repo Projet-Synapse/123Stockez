@@ -1,8 +1,16 @@
 // Powered by OnSpace.AI — Carnets Tab (list of all carnets)
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, Pressable, TextInput,
-  ScrollView, Modal, KeyboardAvoidingView, Platform,
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  ScrollView,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -16,7 +24,24 @@ import { CarnetCard } from '@/components/feature/CarnetCard';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { Carnet, CarnetField } from '@/types';
 
-const EMOJIS = ['📔','🌿','🌸','🍃','🦋','🐾','🍳','✈️','🏋️','🎨','🎵','📚','🌍','💡','🔬','🌺'];
+const EMOJIS = [
+  '📔',
+  '🌿',
+  '🌸',
+  '🍃',
+  '🦋',
+  '🐾',
+  '🍳',
+  '✈️',
+  '🏋️',
+  '🎨',
+  '🎵',
+  '📚',
+  '🌍',
+  '💡',
+  '🔬',
+  '🌺',
+];
 
 export default function CarnetsScreen() {
   const router = useRouter();
@@ -82,22 +107,38 @@ export default function CarnetsScreen() {
     }
   }, [carnetName, carnetDesc, selectedEmoji, fields, user]);
 
-  const handleLongPress = useCallback((carnet: Carnet) => {
-    showAlert(`Supprimer "${carnet.name}" ?`, 'Toutes les entrées de ce carnet seront supprimées.', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: () => removeCarnet(carnet.id, user!.id) },
-    ]);
-  }, [user]);
+  const handleLongPress = useCallback(
+    (carnet: Carnet) => {
+      showAlert(`Supprimer "${carnet.name}" ?`, 'Toutes les entrées de ce carnet seront supprimées.', [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Supprimer', style: 'destructive', onPress: () => removeCarnet(carnet.id, user!.id) },
+      ]);
+    },
+    [user],
+  );
 
-  const renderCarnet = useCallback(({ item, index }: { item: Carnet; index: number }) => (
-    <View style={[styles.cardWrapper, index % 2 === 0 ? { marginRight: Spacing.sm / 2 } : { marginLeft: Spacing.sm / 2 }]}>
-      <CarnetCard
-        carnet={item}
-        onPress={() => router.push({ pathname: '/carnet-detail', params: { carnetId: item.id, carnetName: item.name, emoji: item.emoji } })}
-        onLongPress={() => handleLongPress(item)}
-      />
-    </View>
-  ), [handleLongPress]);
+  const renderCarnet = useCallback(
+    ({ item, index }: { item: Carnet; index: number }) => (
+      <View
+        style={[
+          styles.cardWrapper,
+          index % 2 === 0 ? { marginRight: Spacing.sm / 2 } : { marginLeft: Spacing.sm / 2 },
+        ]}
+      >
+        <CarnetCard
+          carnet={item}
+          onPress={() =>
+            router.push({
+              pathname: '/carnet-detail',
+              params: { carnetId: item.id, carnetName: item.name, emoji: item.emoji },
+            })
+          }
+          onLongPress={() => handleLongPress(item)}
+        />
+      </View>
+    ),
+    [handleLongPress],
+  );
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -116,7 +157,9 @@ export default function CarnetsScreen() {
 
       {carnets.length > 0 ? (
         <View style={styles.statsBar}>
-          <Text style={styles.statsText}>{carnets.length} carnet{carnets.length > 1 ? 's' : ''}</Text>
+          <Text style={styles.statsText}>
+            {carnets.length} carnet{carnets.length > 1 ? 's' : ''}
+          </Text>
           <Text style={styles.statsText}>·</Text>
           <Text style={styles.statsText}>{carnets.reduce((acc, c) => acc + c.entryCount, 0)} entrées</Text>
         </View>
@@ -132,7 +175,9 @@ export default function CarnetsScreen() {
         ListEmptyComponent={
           <EmptyState
             title="Aucun carnet"
-            subtitle={"Créez un carnet pour organiser vos photos avec des informations personnalisées (plantes, recettes, animaux...)"}
+            subtitle={
+              'Créez un carnet pour organiser vos photos avec des informations personnalisées (plantes, recettes, animaux...)'
+            }
           />
         }
       />
@@ -144,14 +189,28 @@ export default function CarnetsScreen() {
       ) : null}
 
       {/* Create carnet modal */}
-      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
         <Pressable style={styles.modalBg} onPress={() => setModalVisible(false)} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.kavContainer}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.kavContainer}
+        >
           <View style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.lg }]}>
             <View style={styles.handle} />
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Nouveau carnet</Text>
-              <Pressable onPress={() => { setModalVisible(false); resetForm(); }} hitSlop={12}>
+              <Pressable
+                onPress={() => {
+                  setModalVisible(false);
+                  resetForm();
+                }}
+                hitSlop={12}
+              >
                 <MaterialIcons name="close" size={22} color={Colors.textSecondary} />
               </Pressable>
             </View>
@@ -160,7 +219,11 @@ export default function CarnetsScreen() {
               <View style={styles.formContent}>
                 {/* Emoji picker */}
                 <Text style={styles.label}>Icône</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emojiRow}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.emojiRow}
+                >
                   {EMOJIS.map((e) => (
                     <Pressable
                       key={e}
@@ -207,7 +270,9 @@ export default function CarnetsScreen() {
                     <View style={[styles.fieldTypeBadge, f.type === 'number' && styles.fieldTypeBadgeNum]}>
                       <Text style={styles.fieldTypeText}>{f.type === 'number' ? '123' : 'Abc'}</Text>
                     </View>
-                    <Text style={styles.fieldRowLabel} numberOfLines={1}>{f.label}</Text>
+                    <Text style={styles.fieldRowLabel} numberOfLines={1}>
+                      {f.label}
+                    </Text>
                     <Pressable onPress={() => removeField(i)} hitSlop={8}>
                       <MaterialIcons name="close" size={18} color={Colors.error} />
                     </Pressable>
@@ -228,7 +293,7 @@ export default function CarnetsScreen() {
                   />
                   <Pressable
                     style={[styles.typeToggle, newFieldType === 'number' && styles.typeToggleActive]}
-                    onPress={() => setNewFieldType((t) => t === 'text' ? 'number' : 'text')}
+                    onPress={() => setNewFieldType((t) => (t === 'text' ? 'number' : 'text'))}
                   >
                     <Text style={styles.typeToggleText}>{newFieldType === 'number' ? '123' : 'Abc'}</Text>
                   </Pressable>
@@ -256,84 +321,178 @@ export default function CarnetsScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
   },
   subtitle: { color: Colors.textMuted, fontSize: Typography.sizes.sm, includeFontPadding: false },
-  title: { color: Colors.textPrimary, fontSize: Typography.sizes.xxl, fontWeight: Typography.weights.bold, includeFontPadding: false },
-  addBtn: {
-    width: 44, height: 44, borderRadius: Radius.md,
-    backgroundColor: Colors.surfaceCard, borderWidth: 1, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
+  title: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.xxl,
+    fontWeight: Typography.weights.bold,
+    includeFontPadding: false,
   },
-  statsBar: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
+  addBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statsBar: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+  },
   statsText: { color: Colors.textMuted, fontSize: Typography.sizes.sm },
   list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
   cardWrapper: { flex: 1, marginBottom: Spacing.md },
   fab: {
-    position: 'absolute', right: Spacing.lg,
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10, elevation: 8,
+    position: 'absolute',
+    right: Spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
   },
   // Modal
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
   kavContainer: { position: 'absolute', bottom: 0, left: 0, right: 0 },
   sheet: {
     backgroundColor: Colors.surface,
-    borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
     maxHeight: '90%',
   },
-  handle: { width: 40, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginTop: Spacing.md },
-  sheetHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
+  handle: {
+    width: 40,
+    height: 4,
+    backgroundColor: Colors.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: Spacing.md,
   },
-  sheetTitle: { color: Colors.textPrimary, fontSize: Typography.sizes.xl, fontWeight: Typography.weights.bold, includeFontPadding: false },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  sheetTitle: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+    includeFontPadding: false,
+  },
   formContent: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, gap: Spacing.sm },
-  label: { color: Colors.textSecondary, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.semibold, marginTop: Spacing.sm },
+  label: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    marginTop: Spacing.sm,
+  },
   emojiRow: { gap: Spacing.sm, paddingVertical: Spacing.sm },
   emojiBtn: {
-    width: 44, height: 44, borderRadius: Radius.md, borderWidth: 2, borderColor: 'transparent',
-    backgroundColor: Colors.surfaceCard, alignItems: 'center', justifyContent: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    backgroundColor: Colors.surfaceCard,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emojiBtnActive: { borderColor: Colors.primary, backgroundColor: Colors.surfaceMid },
   emojiText: { fontSize: 22 },
   input: {
-    backgroundColor: Colors.surfaceCard, borderWidth: 1, borderColor: Colors.border,
-    borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
-    color: Colors.textPrimary, fontSize: Typography.sizes.base,
+    backgroundColor: Colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
   },
   inputMulti: { minHeight: 64, textAlignVertical: 'top' },
   fieldsHeader: { gap: 2 },
   fieldsHint: { color: Colors.textMuted, fontSize: Typography.sizes.xs },
   fieldRow: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    backgroundColor: Colors.surfaceCard, borderRadius: Radius.md,
-    paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.surfaceCard,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   fieldTypeBadge: {
-    backgroundColor: Colors.primary + '33', paddingHorizontal: Spacing.xs,
-    paddingVertical: 2, borderRadius: Radius.sm,
+    backgroundColor: Colors.primary + '33',
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
   },
   fieldTypeBadgeNum: { backgroundColor: Colors.teal + '33' },
   fieldTypeText: { color: Colors.primary, fontSize: 11, fontWeight: '700', includeFontPadding: false },
-  fieldRowLabel: { flex: 1, color: Colors.textPrimary, fontSize: Typography.sizes.base, includeFontPadding: false },
+  fieldRowLabel: {
+    flex: 1,
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    includeFontPadding: false,
+  },
   addFieldRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'center' },
   typeToggle: {
-    width: 44, height: 48, borderRadius: Radius.md, backgroundColor: Colors.surfaceCard,
-    borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center',
+    width: 44,
+    height: 48,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   typeToggleActive: { borderColor: Colors.teal },
-  typeToggleText: { color: Colors.textSecondary, fontSize: Typography.sizes.sm, fontWeight: '700', includeFontPadding: false },
+  typeToggleText: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: '700',
+    includeFontPadding: false,
+  },
   addFieldBtn: {
-    width: 48, height: 48, borderRadius: Radius.md, backgroundColor: Colors.primary,
-    alignItems: 'center', justifyContent: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   createBtn: {
-    backgroundColor: Colors.primary, borderRadius: Radius.md,
-    paddingVertical: Spacing.md, alignItems: 'center', marginTop: Spacing.md,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    marginTop: Spacing.md,
   },
-  createBtnText: { color: Colors.textPrimary, fontSize: Typography.sizes.base, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  createBtnText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
 });

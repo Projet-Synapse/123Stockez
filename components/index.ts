@@ -9,3 +9,4 @@ export { PhotoThumbnail } from './feature/PhotoThumbnail';
 export { MovePhotoSheet } from './feature/MovePhotoSheet';
 export { CarnetCard } from './feature/CarnetCard';
 export { CarnetEntryCard } from './feature/CarnetEntryCard';
+export { UpdateBanner } from './feature/UpdateBanner';

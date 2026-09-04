@@ -1,6 +1,17 @@
 // Powered by OnSpace.AI — Photo Viewer
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Dimensions, Share, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Dimensions,
+  Share,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,7 +27,12 @@ import { Album } from '@/types';
 export default function ViewerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { photoUri, photoName: initialPhotoName, photoId, albumName } = useLocalSearchParams<{
+  const {
+    photoUri,
+    photoName: initialPhotoName,
+    photoId,
+    albumName,
+  } = useLocalSearchParams<{
     photoUri: string;
     photoName: string;
     photoId: string;
@@ -38,12 +54,14 @@ export default function ViewerScreen() {
 
   const handleShare = async () => {
     try {
-      await Share.share({
-        subject: `Photo : ${displayName}`,
-        message: `Voici une photo de mon album "${albumName}" sur PhotoVault !`,
-        url: photoUri,
-      });
-    } catch (e) {
+      await Share.share(
+        {
+          message: `Voici une photo de mon album "${albumName}" sur PhotoVault !`,
+          url: photoUri,
+        },
+        { subject: `Photo : ${displayName}`, dialogTitle: `Partager « ${displayName} »` },
+      );
+    } catch {
       showAlert('Erreur', 'Impossible de partager cette photo.');
     }
   };
@@ -90,7 +108,9 @@ export default function ViewerScreen() {
             <MaterialIcons name="arrow-back" size={24} color={Colors.textPrimary} />
           </Pressable>
           <Pressable style={styles.titleBlock} onPress={openRename} hitSlop={8}>
-            <Text style={styles.photoName} numberOfLines={1}>{displayName}</Text>
+            <Text style={styles.photoName} numberOfLines={1}>
+              {displayName}
+            </Text>
             <Text style={styles.albumName}>{albumName}</Text>
           </Pressable>
           <Pressable onPress={openRename} style={styles.iconBtn} hitSlop={12}>
@@ -108,7 +128,15 @@ export default function ViewerScreen() {
       {/* Bottom bar */}
       {uiVisible ? (
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.md }]}>
-          <Pressable onPress={() => router.push({ pathname: '/photo-editor', params: { photoUri, photoName: displayName, photoId, albumId: currentPhoto?.albumId ?? '' } })} style={styles.actionBtn}>
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: '/photo-editor',
+                params: { photoUri, photoName: displayName, photoId, albumId: currentPhoto?.albumId ?? '' },
+              })
+            }
+            style={styles.actionBtn}
+          >
             <MaterialIcons name="auto-fix-high" size={20} color={Colors.textPrimary} />
             <Text style={styles.actionLabel}>Éditer</Text>
           </Pressable>
@@ -140,8 +168,16 @@ export default function ViewerScreen() {
       />
 
       {/* Rename Modal */}
-      <Modal visible={renameVisible} transparent animationType="fade" onRequestClose={() => setRenameVisible(false)}>
-        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <Modal
+        visible={renameVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRenameVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setRenameVisible(false)} />
           <View style={[styles.renameCard, { paddingBottom: insets.bottom + Spacing.lg }]}>
             <View style={styles.renameHandle} />
@@ -176,23 +212,45 @@ export default function ViewerScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
   topBar: {
-    position: 'absolute', top: 0, left: 0, right: 0,
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingBottom: Spacing.md,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.md,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   titleBlock: { flex: 1, paddingHorizontal: Spacing.sm },
-  photoName: { color: Colors.textPrimary, fontSize: Typography.sizes.base, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  photoName: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
   albumName: { color: Colors.textSecondary, fontSize: Typography.sizes.xs, includeFontPadding: false },
   bottomBar: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    paddingHorizontal: Spacing.xl, paddingTop: Spacing.md,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
     backgroundColor: 'rgba(0,0,0,0.55)',
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.xl,
   },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm },
-  actionLabel: { color: Colors.textPrimary, fontSize: Typography.sizes.base, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  actionLabel: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
   divider: { width: 1, height: 24, backgroundColor: Colors.border },
   // Rename modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
@@ -204,8 +262,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     gap: Spacing.md,
   },
-  renameHandle: { width: 40, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: Spacing.sm },
-  renameTitle: { color: Colors.textPrimary, fontSize: Typography.sizes.lg, fontWeight: Typography.weights.bold, includeFontPadding: false },
+  renameHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: Colors.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: Spacing.sm,
+  },
+  renameTitle: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.bold,
+    includeFontPadding: false,
+  },
   renameInput: {
     backgroundColor: Colors.surfaceCard,
     borderWidth: 1,
@@ -217,8 +287,30 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.base,
   },
   renameActions: { flexDirection: 'row', gap: Spacing.md },
-  renameCancel: { flex: 1, paddingVertical: Spacing.md, borderRadius: Radius.md, backgroundColor: Colors.surfaceCard, alignItems: 'center' },
-  renameCancelText: { color: Colors.textSecondary, fontSize: Typography.sizes.base, fontWeight: Typography.weights.medium, includeFontPadding: false },
-  renameConfirm: { flex: 1, paddingVertical: Spacing.md, borderRadius: Radius.md, backgroundColor: Colors.primary, alignItems: 'center' },
-  renameConfirmText: { color: Colors.textPrimary, fontSize: Typography.sizes.base, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  renameCancel: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceCard,
+    alignItems: 'center',
+  },
+  renameCancelText: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.medium,
+    includeFontPadding: false,
+  },
+  renameConfirm: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+  },
+  renameConfirmText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
 });

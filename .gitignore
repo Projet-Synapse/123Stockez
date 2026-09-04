@@ -37,3 +37,11 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Desktop (Electron)
+desktop/renderer/
+desktop/node_modules/
+release/
+
+# Tooling caches
+.eslintcache

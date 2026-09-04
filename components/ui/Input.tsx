@@ -1,6 +1,6 @@
 // Powered by OnSpace.AI
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ViewStyle } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ViewStyle, KeyboardTypeOptions } from 'react-native';
 import { Colors, Typography, Radius, Spacing } from '@/constants/theme';
 
 interface InputProps {
@@ -9,7 +9,7 @@ interface InputProps {
   value: string;
   onChangeText: (t: string) => void;
   secureTextEntry?: boolean;
-  keyboardType?: 'default' | 'email-address' | 'numeric';
+  keyboardType?: KeyboardTypeOptions;
   autoCapitalize?: 'none' | 'sentences' | 'words';
   multiline?: boolean;
   numberOfLines?: number;
@@ -18,13 +18,31 @@ interface InputProps {
   accessibilityLabel?: string;
 }
 
-export function Input({ label, placeholder, value, onChangeText, secureTextEntry, keyboardType = 'default', autoCapitalize = 'sentences', multiline, numberOfLines, error, style, accessibilityLabel }: InputProps) {
+export function Input({
+  label,
+  placeholder,
+  value,
+  onChangeText,
+  secureTextEntry,
+  keyboardType = 'default',
+  autoCapitalize = 'sentences',
+  multiline,
+  numberOfLines,
+  error,
+  style,
+  accessibilityLabel,
+}: InputProps) {
   const [focused, setFocused] = useState(false);
   return (
     <View style={[styles.container, style]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
-        style={[styles.input, focused && styles.focused, error ? styles.errorBorder : null, multiline && styles.multiline]}
+        style={[
+          styles.input,
+          focused && styles.focused,
+          error ? styles.errorBorder : null,
+          multiline && styles.multiline,
+        ]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -45,7 +63,12 @@ export function Input({ label, placeholder, value, onChangeText, secureTextEntry
 
 const styles = StyleSheet.create({
   container: { gap: Spacing.xs },
-  label: { color: Colors.textSecondary, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.medium, includeFontPadding: false },
+  label: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.medium,
+    includeFontPadding: false,
+  },
   input: {
     backgroundColor: Colors.surfaceCard,
     borderWidth: 1,

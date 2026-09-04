@@ -13,7 +13,15 @@ interface ButtonProps {
   style?: ViewStyle;
 }
 
-export function Button({ label, onPress, variant = 'primary', size = 'md', loading = false, disabled = false, style }: ButtonProps) {
+export function Button({
+  label,
+  onPress,
+  variant = 'primary',
+  size = 'md',
+  loading = false,
+  disabled = false,
+  style,
+}: ButtonProps) {
   const isDisabled = disabled || loading;
 
   return (

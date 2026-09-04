@@ -12,30 +12,41 @@ interface AlbumCardProps {
   onLongPress?: () => void;
 }
 
-export const AlbumCard = React.memo(({ album, accentColor = Colors.primary, onPress, onLongPress }: AlbumCardProps) => {
-  return (
-    <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-    >
-      {album.coverPhoto ? (
-        <Image source={{ uri: album.coverPhoto }} style={styles.cover} contentFit="cover" transition={200} />
-      ) : (
-        <View style={[styles.cover, styles.placeholder, { backgroundColor: accentColor + '22' }]}>
-          <Text style={styles.icon}>🖼️</Text>
+export const AlbumCard = React.memo(
+  ({ album, accentColor = Colors.primary, onPress, onLongPress }: AlbumCardProps) => {
+    return (
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      >
+        {album.coverPhoto ? (
+          <Image
+            source={{ uri: album.coverPhoto }}
+            style={styles.cover}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : (
+          <View style={[styles.cover, styles.placeholder, { backgroundColor: accentColor + '22' }]}>
+            <Text style={styles.icon}>🖼️</Text>
+          </View>
+        )}
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={1}>
+            {album.name}
+          </Text>
+          <View style={styles.row}>
+            <View style={[styles.dot, { backgroundColor: accentColor }]} />
+            <Text style={styles.meta}>
+              {album.photoCount} photo{album.photoCount !== 1 ? 's' : ''}
+            </Text>
+          </View>
         </View>
-      )}
-      <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>{album.name}</Text>
-        <View style={styles.row}>
-          <View style={[styles.dot, { backgroundColor: accentColor }]} />
-          <Text style={styles.meta}>{album.photoCount} photo{album.photoCount !== 1 ? 's' : ''}</Text>
-        </View>
-      </View>
-    </Pressable>
-  );
-});
+      </Pressable>
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   card: {
@@ -53,9 +64,16 @@ const styles = StyleSheet.create({
   placeholder: { alignItems: 'center', justifyContent: 'center' },
   icon: { fontSize: 36 },
   info: { padding: Spacing.sm + 4 },
-  name: { color: Colors.textPrimary, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  name: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
   row: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   meta: { color: Colors.textMuted, fontSize: Typography.sizes.xs, includeFontPadding: false },
   pressed: { opacity: 0.85, transform: [{ scale: 0.97 }] },
 });
+
+AlbumCard.displayName = 'AlbumCard';

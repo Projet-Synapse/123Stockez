@@ -1,8 +1,14 @@
 // Powered by OnSpace.AI — Login Screen with Google OAuth + Email/Password
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, KeyboardAvoidingView,
-  Platform, Pressable, ActivityIndicator,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { Redirect } from 'expo-router';
 import { Image } from 'expo-image';
@@ -132,12 +138,20 @@ export default function LoginScreen() {
       <StatusBar style="light" />
       <ScrollView
         style={styles.root}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + Spacing.lg, paddingBottom: insets.bottom + Spacing.xl }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + Spacing.lg, paddingBottom: insets.bottom + Spacing.xl },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Hero */}
-        <Image source={require('@/assets/images/hero-gallery.png')} style={styles.hero} contentFit="cover" transition={300} />
+        <Image
+          source={require('@/assets/images/hero-gallery.png')}
+          style={styles.hero}
+          contentFit="cover"
+          transition={300}
+        />
 
         <View style={styles.card}>
           <Text style={styles.title}>PhotoVault</Text>
@@ -231,10 +245,15 @@ export default function LoginScreen() {
                 )}
 
                 {/* Toggle login / register */}
-                <Pressable onPress={() => setMode(mode === 'login' ? 'register' : 'login')} style={styles.switchRow}>
+                <Pressable
+                  onPress={() => setMode(mode === 'login' ? 'register' : 'login')}
+                  style={styles.switchRow}
+                >
                   <Text style={styles.switchText}>
-                    {mode === 'login' ? "Pas encore de compte ? " : "Déjà un compte ? "}
-                    <Text style={styles.switchLink}>{mode === 'login' ? 'Créer un compte' : 'Se connecter'}</Text>
+                    {mode === 'login' ? 'Pas encore de compte ? ' : 'Déjà un compte ? '}
+                    <Text style={styles.switchLink}>
+                      {mode === 'login' ? 'Créer un compte' : 'Se connecter'}
+                    </Text>
                   </Text>
                 </Pressable>
               </View>
@@ -252,27 +271,74 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   content: { alignItems: 'center', paddingHorizontal: Spacing.lg },
   hero: { width: 200, height: 270, borderRadius: Radius.xl, marginBottom: Spacing.xl },
-  card: { width: '100%', backgroundColor: Colors.surface, borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.md },
-  title: { color: Colors.textPrimary, fontSize: Typography.sizes.xxl, fontWeight: Typography.weights.bold, textAlign: 'center', includeFontPadding: false },
-  subtitle: { color: Colors.textSecondary, fontSize: Typography.sizes.sm, textAlign: 'center', includeFontPadding: false },
-  googleBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
-    backgroundColor: Colors.primary, borderRadius: Radius.md,
-    paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg,
+  card: {
+    width: '100%',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    gap: Spacing.md,
   },
-  googleText: { color: Colors.textPrimary, fontSize: Typography.sizes.base, fontWeight: Typography.weights.semibold, includeFontPadding: false },
+  title: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.xxl,
+    fontWeight: Typography.weights.bold,
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  subtitle: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+  },
+  googleText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    includeFontPadding: false,
+  },
   divider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
   dividerText: { color: Colors.textMuted, fontSize: Typography.sizes.xs },
   form: { gap: Spacing.md },
   otpBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
-    borderWidth: 1, borderColor: Colors.primary, borderRadius: Radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderRadius: Radius.md,
     paddingVertical: Spacing.sm,
   },
-  otpBtnText: { color: Colors.primary, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.medium, includeFontPadding: false },
+  otpBtnText: {
+    color: Colors.primary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.medium,
+    includeFontPadding: false,
+  },
   switchRow: { alignItems: 'center', paddingVertical: Spacing.xs },
-  switchText: { color: Colors.textSecondary, fontSize: Typography.sizes.sm, textAlign: 'center', includeFontPadding: false },
+  switchText: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
   switchLink: { color: Colors.primary, fontWeight: Typography.weights.semibold },
-  otpHint: { color: Colors.textSecondary, fontSize: Typography.sizes.sm, textAlign: 'center', includeFontPadding: false },
+  otpHint: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
 });
