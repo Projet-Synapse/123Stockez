@@ -80,14 +80,32 @@ jobs:
             echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
           } > .env
 
+      # An absent secret expands to an empty string, and electron-builder treats
+      # a defined-but-empty CSC_LINK as "load a certificate from ''", which
+      # resolves to the project directory and fails with "<projectDir> not a
+      # file". Only export the variables when a certificate actually exists.
+      - name: Configure macOS signing
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          CSC_LINK_SECRET: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD_SECRET: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          if [ -n "$CSC_LINK_SECRET" ]; then
+            echo "CSC_LINK=$CSC_LINK_SECRET" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=$CSC_KEY_PASSWORD_SECRET" >> "$GITHUB_ENV"
+            echo "Certificat trouvé — le build sera signé."
+          else
+            # No certificate: produce an unsigned dmg rather than failing the
+            # release. It installs after a Gatekeeper prompt.
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+            echo "Aucun certificat — build macOS non signé."
+          fi
+
       - name: Build and publish
         run: node scripts/build-desktop.js --publish ${{ matrix.target }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing — optional; an unsigned dmg still installs after a
-          # Gatekeeper prompt.
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
 
   announce:
     needs: build
