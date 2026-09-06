@@ -88,7 +88,7 @@ export default function AlbumsScreen() {
           onPress={() =>
             router.push({
               pathname: '/photos',
-              params: { albumId: item.id, albumName: item.name, color: accentColor },
+              params: { albumId: item.id, albumName: item.name, groupId: item.groupId, color: accentColor },
             })
           }
           onLongPress={() => handleLongPress(item)}
