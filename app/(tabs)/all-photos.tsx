@@ -37,6 +37,9 @@ export default function AllPhotosScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -54,33 +57,82 @@ export default function AllPhotosScreen() {
     }
   }, [user, loadAllPhotos]);
 
-  const handleLongPress = useCallback((photo: Photo) => {
-    showAlert('Que souhaitez-vous faire ?', photo.name, [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Renommer',
-        onPress: () => {
-          router.push({
-            pathname: '/viewer',
-            params: { photoUri: photo.uri, photoName: photo.name, photoId: photo.id, albumName: '' },
-          });
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelected = useCallback((photoId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(photoId)) {
+        next.delete(photoId);
+      } else {
+        next.add(photoId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleLongPress = useCallback(
+    (photo: Photo) => {
+      if (selectionMode) return;
+      setSelectionMode(true);
+      setSelectedIds(new Set([photo.id]));
+    },
+    [selectionMode],
+  );
+
+  const handlePhotoPress = useCallback(
+    (photo: Photo) => {
+      if (selectionMode) {
+        toggleSelected(photo.id);
+        return;
+      }
+      router.push({
+        pathname: '/viewer',
+        params: {
+          photoUri: photo.uri,
+          photoName: photo.name,
+          photoId: photo.id,
+          albumName: '',
         },
-      },
+      });
+    },
+    [selectionMode, toggleSelected],
+  );
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedIds((prev) =>
+      prev.size === allPhotos.length ? new Set() : new Set(allPhotos.map((p) => p.id)),
+    );
+  }, [allPhotos]);
+
+  const handleDeleteSelected = useCallback(() => {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    showAlert(`Supprimer ${count} photo${count > 1 ? 's' : ''} ?`, 'Cette action est irréversible.', [
+      { text: 'Annuler', style: 'cancel' },
       {
         text: 'Supprimer',
         style: 'destructive',
-        onPress: () =>
-          showAlert('Supprimer cette photo ?', 'Cette action est irréversible.', [
-            { text: 'Annuler', style: 'cancel' },
-            {
-              text: 'Supprimer',
-              style: 'destructive',
-              onPress: () => removePhoto(photo.id, photo.albumId, photo.groupId),
-            },
-          ]),
+        onPress: async () => {
+          setDeleting(true);
+          try {
+            for (const id of selectedIds) {
+              const photo = allPhotos.find((p) => p.id === id);
+              if (photo) {
+                await removePhoto(photo.id, photo.albumId, photo.groupId);
+              }
+            }
+          } finally {
+            setDeleting(false);
+            exitSelectionMode();
+          }
+        },
       },
     ]);
-  }, []);
+  }, [selectedIds, allPhotos, removePhoto, exitSelectionMode, showAlert]);
 
   const filteredPhotos = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -107,14 +159,76 @@ export default function AllPhotosScreen() {
       <StatusBar style="light" />
 
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Toutes les photos</Text>
-        {allPhotos.length > 0 ? (
-          <Text style={styles.count}>
-            {allPhotos.length} photo{allPhotos.length > 1 ? 's' : ''}
+      {selectionMode ? (
+        <View style={styles.header}>
+          <Pressable
+            onPress={exitSelectionMode}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Annuler la sélection"
+          >
+            <MaterialIcons name="close" size={24} color={Colors.textPrimary} />
+          </Pressable>
+          <Text style={styles.title} numberOfLines={1}>
+            {selectedIds.size} sélectionnée{selectedIds.size > 1 ? 's' : ''}
           </Text>
-        ) : null}
-      </View>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={handleSelectAll}
+              hitSlop={8}
+              style={styles.iconBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Tout sélectionner"
+            >
+              <MaterialIcons
+                name={selectedIds.size === allPhotos.length ? 'deselect' : 'select-all'}
+                size={22}
+                color={Colors.textSecondary}
+              />
+            </Pressable>
+            <Pressable
+              onPress={handleDeleteSelected}
+              hitSlop={8}
+              style={styles.iconBtn}
+              disabled={selectedIds.size === 0 || deleting}
+              accessibilityRole="button"
+              accessibilityLabel="Supprimer la sélection"
+            >
+              {deleting ? (
+                <ActivityIndicator color={Colors.error} size="small" />
+              ) : (
+                <MaterialIcons
+                  name="delete"
+                  size={24}
+                  color={selectedIds.size === 0 ? Colors.textMuted : Colors.error}
+                />
+              )}
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.header}>
+          <Text style={styles.title}>Toutes les photos</Text>
+          <View style={styles.headerActions}>
+            {allPhotos.length > 0 ? (
+              <Text style={styles.count}>
+                {allPhotos.length} photo{allPhotos.length > 1 ? 's' : ''}
+              </Text>
+            ) : null}
+            {allPhotos.length > 0 ? (
+              <Pressable
+                onPress={() => setSelectionMode(true)}
+                style={styles.iconBtn}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Sélectionner des photos"
+              >
+                <MaterialIcons name="checklist" size={22} color={Colors.textSecondary} />
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      )}
 
       {loading && allPhotos.length === 0 ? (
         <View style={styles.emptyWrapper}>
@@ -129,7 +243,7 @@ export default function AllPhotosScreen() {
         </View>
       ) : (
         <>
-          {allPhotos.length > 6 ? (
+          {!selectionMode && allPhotos.length > 6 ? (
             <View style={styles.searchBar}>
               <MaterialIcons name="search" size={20} color={Colors.textMuted} />
               <TextInput
@@ -185,17 +299,9 @@ export default function AllPhotosScreen() {
                       <PhotoThumbnail
                         photo={photo}
                         size={photoSize}
-                        onPress={() =>
-                          router.push({
-                            pathname: '/viewer',
-                            params: {
-                              photoUri: photo.uri,
-                              photoName: photo.name,
-                              photoId: photo.id,
-                              albumName: '',
-                            },
-                          })
-                        }
+                        selectionMode={selectionMode}
+                        selected={selectedIds.has(photo.id)}
+                        onPress={() => handlePhotoPress(photo)}
                         onLongPress={() => handleLongPress(photo)}
                       />
                     </View>
@@ -214,18 +320,22 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.md,
+    gap: Spacing.sm,
   },
   title: {
     color: Colors.textPrimary,
     fontSize: Typography.sizes.xxl,
     fontWeight: Typography.weights.bold,
+    flex: 1,
     includeFontPadding: false,
   },
   count: { color: Colors.textMuted, fontSize: Typography.sizes.sm, includeFontPadding: false },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  iconBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   emptyWrapper: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   searchBar: {
     flexDirection: 'row',

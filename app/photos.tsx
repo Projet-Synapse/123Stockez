@@ -1,11 +1,12 @@
 // Powered by OnSpace.AI — Photos Screen
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
   Pressable,
+  TextInput,
   Share,
   Dimensions,
   RefreshControl,
@@ -20,7 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGallery } from '@/hooks/useGallery';
 import { useAlert } from '@/template';
 import { PhotoThumbnail, EmptyState } from '@/components';
-import { Colors, Typography, Spacing } from '@/constants/theme';
+import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { Photo } from '@/types';
 
 const NUM_COLS = 3;
@@ -29,9 +30,10 @@ const GAP = 2;
 export default function PhotosScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { albumId, albumName, color } = useLocalSearchParams<{
+  const { albumId, albumName, groupId, color } = useLocalSearchParams<{
     albumId: string;
     albumName: string;
+    groupId: string;
     color: string;
   }>();
   const { user } = useAuth();
@@ -43,6 +45,10 @@ export default function PhotosScreen() {
   const photoSize = Math.floor((screenWidth - Spacing.lg * 2 - GAP * (NUM_COLS - 1)) / NUM_COLS);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!albumId) return;
@@ -73,11 +79,10 @@ export default function PhotosScreen() {
     });
     if (!result.canceled) {
       for (const asset of result.assets) {
-        const groupId = photos[0]?.groupId ?? '';
         await addPhoto(user!.id, albumId, groupId, asset.uri, asset.fileName || `photo_${Date.now()}`);
       }
     }
-  }, [user, albumId]);
+  }, [user, albumId, groupId]);
 
   const handleShareAlbum = useCallback(async () => {
     const count = photos.length;
@@ -93,35 +98,94 @@ export default function PhotosScreen() {
     }
   }, [photos, albumName]);
 
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelected = useCallback((photoId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(photoId)) {
+        next.delete(photoId);
+      } else {
+        next.add(photoId);
+      }
+      return next;
+    });
+  }, []);
+
   const handleLongPress = useCallback(
     (photo: Photo) => {
-      showAlert('Supprimer cette photo ?', 'Cette action est irréversible.', [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: () => removePhoto(photo.id, albumId, photo.groupId),
-        },
-      ]);
+      if (selectionMode) return;
+      setSelectionMode(true);
+      setSelectedIds(new Set([photo.id]));
     },
-    [albumId],
+    [selectionMode],
   );
+
+  const handlePhotoPress = useCallback(
+    (photo: Photo) => {
+      if (selectionMode) {
+        toggleSelected(photo.id);
+        return;
+      }
+      router.push({
+        pathname: '/viewer',
+        params: { photoUri: photo.uri, photoName: photo.name, photoId: photo.id, albumName },
+      });
+    },
+    [selectionMode, toggleSelected, albumName],
+  );
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => (prev.size === photos.length ? new Set() : new Set(photos.map((p) => p.id))));
+  }, [photos]);
+
+  const handleDeleteSelected = useCallback(() => {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    showAlert(`Supprimer ${count} photo${count > 1 ? 's' : ''} ?`, 'Cette action est irréversible.', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: async () => {
+          setDeleting(true);
+          try {
+            for (const id of selectedIds) {
+              const photo = photos.find((p) => p.id === id);
+              if (photo) {
+                await removePhoto(photo.id, albumId, photo.groupId);
+              }
+            }
+          } finally {
+            setDeleting(false);
+            exitSelectionMode();
+          }
+        },
+      },
+    ]);
+  }, [selectedIds, photos, albumId, removePhoto, exitSelectionMode, showAlert]);
+
+  const filteredPhotos = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return photos;
+    return photos.filter((p) => p.name.toLowerCase().includes(q));
+  }, [photos, search]);
 
   const renderPhoto = useCallback(
     ({ item }: { item: Photo }) => (
       <PhotoThumbnail
         photo={item}
         size={photoSize}
-        onPress={() =>
-          router.push({
-            pathname: '/viewer',
-            params: { photoUri: item.uri, photoName: item.name, photoId: item.id, albumName },
-          })
-        }
+        selectionMode={selectionMode}
+        selected={selectedIds.has(item.id)}
+        onPress={() => handlePhotoPress(item)}
         onLongPress={() => handleLongPress(item)}
       />
     ),
-    [photoSize, albumName, handleLongPress],
+    [photoSize, selectionMode, selectedIds, handlePhotoPress, handleLongPress],
   );
 
   return (
@@ -129,88 +193,181 @@ export default function PhotosScreen() {
       <StatusBar style="light" />
 
       {/* Header */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Retour"
-        >
-          <MaterialIcons name="arrow-back" size={24} color={Colors.textPrimary} />
-        </Pressable>
-        <Text style={styles.title} numberOfLines={1}>
-          {albumName}
-        </Text>
-        <View style={styles.headerActions}>
+      {selectionMode ? (
+        <View style={styles.header}>
           <Pressable
-            onPress={handleShareAlbum}
-            style={styles.iconBtn}
+            onPress={exitSelectionMode}
+            style={styles.backBtn}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Partager l'album"
+            accessibilityLabel="Annuler la sélection"
           >
-            <MaterialIcons name="share" size={22} color={Colors.textSecondary} />
+            <MaterialIcons name="close" size={24} color={Colors.textPrimary} />
           </Pressable>
-          <Pressable
-            onPress={handleAddPhoto}
-            style={styles.iconBtn}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Ajouter des photos"
-          >
-            <MaterialIcons name="add-photo-alternate" size={24} color={Colors.textPrimary} />
-          </Pressable>
+          <Text style={styles.title} numberOfLines={1}>
+            {selectedIds.size} sélectionnée{selectedIds.size > 1 ? 's' : ''}
+          </Text>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={handleSelectAll}
+              style={styles.iconBtn}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Tout sélectionner"
+            >
+              <MaterialIcons
+                name={selectedIds.size === photos.length ? 'deselect' : 'select-all'}
+                size={22}
+                color={Colors.textSecondary}
+              />
+            </Pressable>
+            <Pressable
+              onPress={handleDeleteSelected}
+              style={styles.iconBtn}
+              hitSlop={8}
+              disabled={selectedIds.size === 0 || deleting}
+              accessibilityRole="button"
+              accessibilityLabel="Supprimer la sélection"
+            >
+              {deleting ? (
+                <ActivityIndicator color={Colors.error} size="small" />
+              ) : (
+                <MaterialIcons
+                  name="delete"
+                  size={24}
+                  color={selectedIds.size === 0 ? Colors.textMuted : Colors.error}
+                />
+              )}
+            </Pressable>
+          </View>
         </View>
-      </View>
+      ) : (
+        <View style={styles.header}>
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+          >
+            <MaterialIcons name="arrow-back" size={24} color={Colors.textPrimary} />
+          </Pressable>
+          <Text style={styles.title} numberOfLines={1}>
+            {albumName}
+          </Text>
+          <View style={styles.headerActions}>
+            {photos.length > 0 ? (
+              <Pressable
+                onPress={() => setSelectionMode(true)}
+                style={styles.iconBtn}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Sélectionner des photos"
+              >
+                <MaterialIcons name="checklist" size={22} color={Colors.textSecondary} />
+              </Pressable>
+            ) : null}
+            <Pressable
+              onPress={handleShareAlbum}
+              style={styles.iconBtn}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Partager l'album"
+            >
+              <MaterialIcons name="share" size={22} color={Colors.textSecondary} />
+            </Pressable>
+            <Pressable
+              onPress={handleAddPhoto}
+              style={styles.iconBtn}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Ajouter des photos"
+            >
+              <MaterialIcons name="add-photo-alternate" size={24} color={Colors.textPrimary} />
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {loading && photos.length === 0 ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={accentColor} size="large" />
         </View>
       ) : (
-        <FlatList
-          data={photos}
-          keyExtractor={(item) => item.id}
-          renderItem={renderPhoto}
-          numColumns={NUM_COLS}
-          contentContainerStyle={[styles.grid, photos.length === 0 && { flex: 1 }]}
-          columnWrapperStyle={{ gap: GAP }}
-          ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={accentColor}
-              colors={[accentColor]}
-            />
-          }
-          ListHeaderComponent={
-            photos.length > 0 ? (
-              <Text style={styles.meta}>
-                {photos.length} photo{photos.length > 1 ? 's' : ''}
-              </Text>
-            ) : null
-          }
-          ListEmptyComponent={
-            <EmptyState
-              title="Aucune photo"
-              subtitle="Appuyez sur + pour ajouter des photos depuis votre téléphone."
-            />
-          }
-        />
+        <>
+          {!selectionMode && photos.length > 6 ? (
+            <View style={styles.searchBar}>
+              <MaterialIcons name="search" size={20} color={Colors.textMuted} />
+              <TextInput
+                style={styles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Rechercher une photo..."
+                placeholderTextColor={Colors.textMuted}
+                accessibilityLabel="Rechercher une photo"
+                returnKeyType="search"
+              />
+              {search.length > 0 ? (
+                <Pressable
+                  onPress={() => setSearch('')}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Effacer la recherche"
+                >
+                  <MaterialIcons name="close" size={18} color={Colors.textMuted} />
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+          <FlatList
+            data={filteredPhotos}
+            keyExtractor={(item) => item.id}
+            renderItem={renderPhoto}
+            numColumns={NUM_COLS}
+            contentContainerStyle={[styles.grid, filteredPhotos.length === 0 && { flex: 1 }]}
+            columnWrapperStyle={{ gap: GAP }}
+            ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={accentColor}
+                colors={[accentColor]}
+              />
+            }
+            ListHeaderComponent={
+              filteredPhotos.length > 0 ? (
+                <Text style={styles.meta}>
+                  {filteredPhotos.length} photo{filteredPhotos.length > 1 ? 's' : ''}
+                </Text>
+              ) : null
+            }
+            ListEmptyComponent={
+              photos.length > 0 ? (
+                <EmptyState title="Aucun résultat" subtitle={`Aucune photo ne correspond à "${search}".`} />
+              ) : (
+                <EmptyState
+                  title="Aucune photo"
+                  subtitle="Appuyez sur + pour ajouter des photos depuis votre téléphone."
+                />
+              )
+            }
+          />
+        </>
       )}
 
       {/* FAB add photo */}
-      <Pressable
-        style={[styles.fab, { bottom: insets.bottom + Spacing.lg, backgroundColor: accentColor }]}
-        onPress={handleAddPhoto}
-        accessibilityRole="button"
-        accessibilityLabel="Ajouter des photos"
-      >
-        <MaterialIcons name="add-photo-alternate" size={28} color={Colors.textPrimary} />
-      </Pressable>
+      {!selectionMode ? (
+        <Pressable
+          style={[styles.fab, { bottom: insets.bottom + Spacing.lg, backgroundColor: accentColor }]}
+          onPress={handleAddPhoto}
+          accessibilityRole="button"
+          accessibilityLabel="Ajouter des photos"
+        >
+          <MaterialIcons name="add-photo-alternate" size={28} color={Colors.textPrimary} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -235,6 +392,25 @@ const styles = StyleSheet.create({
   headerActions: { flexDirection: 'row', gap: Spacing.xs },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    height: 44,
+  },
+  searchInput: {
+    flex: 1,
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+    includeFontPadding: false,
+  },
   meta: {
     color: Colors.textMuted,
     fontSize: Typography.sizes.sm,
