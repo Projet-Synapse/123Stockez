@@ -9,7 +9,7 @@ import { useGallery } from '@/hooks/useGallery';
 import { useCarnet } from '@/hooks/useCarnet';
 import { useAlert } from '@/template';
 import { useUpdates } from '@/hooks/useUpdates';
-import { Button } from '@/components';
+import { Button, Toggle } from '@/components';
 import { currentPlatform } from '@/services/platform';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 
@@ -132,14 +132,20 @@ export default function ProfileScreen() {
             variant="secondary"
             loading={update.stage === 'checking'}
           />
-          {update.stage === 'available' && update.canSelfInstall ? (
+          {(update.stage === 'available' || update.stage === 'ready') && update.canSelfInstall ? (
             <Button
-              label="Installer et redémarrer"
+              label={update.stage === 'ready' ? 'Redémarrer et installer' : 'Installer et redémarrer'}
               onPress={update.applyUpdate}
-              loading={update.stage !== 'available'}
             />
           ) : null}
         </View>
+
+        <Toggle
+          label="Mise à jour automatique"
+          description="Télécharge les nouvelles versions en arrière-plan et les installe à la fermeture de l'application."
+          value={update.autoUpdate}
+          onChange={update.setAutoUpdate}
+        />
       </View>
 
       <View style={styles.logoutContainer}>

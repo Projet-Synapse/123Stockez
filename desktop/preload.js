@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('stockezDesktop', {
   downloadUpdate: () => ipcRenderer.invoke('updates:download'),
   /** Replaces the installed build with the downloaded one and relaunches. */
   quitAndInstall: () => ipcRenderer.send('updates:install'),
+  /** Turns automatic download + install-on-quit on or off. */
+  setAutoUpdate: (enabled) => ipcRenderer.send('updates:set-auto', enabled),
   onUpdateEvent: (handler) => {
     const listener = (_event, payload) => handler(payload);
     ipcRenderer.on(UPDATE_CHANNEL, listener);
