@@ -21,8 +21,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGallery } from '@/hooks/useGallery';
 import { useAlert } from '@/template';
 import { PhotoThumbnail, EmptyState } from '@/components';
+import { MovePhotoSheet } from '@/components/feature/MovePhotoSheet';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { Photo } from '@/types';
+import { Photo, Album } from '@/types';
 
 const NUM_COLS = 3;
 const GAP = 2;
@@ -37,7 +38,7 @@ export default function PhotosScreen() {
     color: string;
   }>();
   const { user } = useAuth();
-  const { photos, loadPhotos, addPhoto, removePhoto } = useGallery();
+  const { photos, loadPhotos, addPhoto, removePhotos, movePhotos } = useGallery();
   const { showAlert } = useAlert();
   const accentColor = color || Colors.primary;
 
@@ -49,6 +50,8 @@ export default function PhotosScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [moveVisible, setMoveVisible] = useState(false);
+  const [moving, setMoving] = useState(false);
 
   useEffect(() => {
     if (!albumId) return;
@@ -153,12 +156,10 @@ export default function PhotosScreen() {
         onPress: async () => {
           setDeleting(true);
           try {
-            for (const id of selectedIds) {
-              const photo = photos.find((p) => p.id === id);
-              if (photo) {
-                await removePhoto(photo.id, albumId, photo.groupId);
-              }
-            }
+            const toDelete = photos
+              .filter((p) => selectedIds.has(p.id))
+              .map((p) => ({ id: p.id, albumId: p.albumId }));
+            await removePhotos(toDelete);
           } finally {
             setDeleting(false);
             exitSelectionMode();
@@ -166,7 +167,27 @@ export default function PhotosScreen() {
         },
       },
     ]);
-  }, [selectedIds, photos, albumId, removePhoto, exitSelectionMode, showAlert]);
+  }, [selectedIds, photos, removePhotos, exitSelectionMode, showAlert]);
+
+  const handleMoveSelected = useCallback(
+    async (targetAlbum: Album) => {
+      const toMove = photos.filter((p) => selectedIds.has(p.id));
+      if (toMove.length === 0) return;
+      setMoveVisible(false);
+      setMoving(true);
+      try {
+        await movePhotos(toMove, targetAlbum);
+        showAlert(
+          'Photos déplacées',
+          `${toMove.length} photo${toMove.length > 1 ? 's' : ''} déplacée${toMove.length > 1 ? 's' : ''} vers « ${targetAlbum.name} ».`,
+        );
+      } finally {
+        setMoving(false);
+        exitSelectionMode();
+      }
+    },
+    [photos, selectedIds, movePhotos, exitSelectionMode, showAlert],
+  );
 
   const filteredPhotos = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -220,6 +241,24 @@ export default function PhotosScreen() {
                 size={22}
                 color={Colors.textSecondary}
               />
+            </Pressable>
+            <Pressable
+              onPress={() => setMoveVisible(true)}
+              style={styles.iconBtn}
+              hitSlop={8}
+              disabled={selectedIds.size === 0 || moving}
+              accessibilityRole="button"
+              accessibilityLabel="Déplacer la sélection vers un autre album"
+            >
+              {moving ? (
+                <ActivityIndicator color={accentColor} size="small" />
+              ) : (
+                <MaterialIcons
+                  name="drive-file-move"
+                  size={22}
+                  color={selectedIds.size === 0 ? Colors.textMuted : Colors.textSecondary}
+                />
+              )}
             </Pressable>
             <Pressable
               onPress={handleDeleteSelected}
@@ -368,6 +407,15 @@ export default function PhotosScreen() {
           <MaterialIcons name="add-photo-alternate" size={28} color={Colors.textPrimary} />
         </Pressable>
       ) : null}
+
+      {/* Move selected photos sheet */}
+      <MovePhotoSheet
+        visible={moveVisible}
+        onClose={() => setMoveVisible(false)}
+        currentAlbumId={albumId}
+        userId={user?.id ?? ''}
+        onMove={handleMoveSelected}
+      />
     </View>
   );
 }

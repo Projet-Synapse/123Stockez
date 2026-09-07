@@ -38,7 +38,9 @@ interface GalleryContextType {
   addPhoto: (userId: string, albumId: string, groupId: string, uri: string, name: string) => Promise<Photo>;
   renamePhoto: (photo: Photo, newName: string) => Promise<void>;
   movePhoto: (photo: Photo, targetAlbum: Album) => Promise<void>;
+  movePhotos: (photos: Photo[], targetAlbum: Album) => Promise<void>;
   removePhoto: (photoId: string, albumId: string, groupId: string) => Promise<void>;
+  removePhotos: (photos: { id: string; albumId: string }[]) => Promise<void>;
 }
 
 export const GalleryContext = createContext<GalleryContextType | undefined>(undefined);
@@ -163,24 +165,59 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
     setAllPhotos((prev) => prev.map((p) => (p.id === photo.id ? updated : p)));
   }, []);
 
-  const movePhoto = useCallback(async (photo: Photo, targetAlbum: Album) => {
-    await movePhotoToAlbum(photo.id, targetAlbum.id, targetAlbum.groupId);
-    const updated = { ...photo, albumId: targetAlbum.id, groupId: targetAlbum.groupId };
-    setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
-    setAllPhotos((prev) => prev.map((p) => (p.id === photo.id ? updated : p)));
+  // Move one or many photos to another album in a single round-trip: all storage
+  // calls run in parallel and the local state (source/target album counts) is
+  // reconciled with one update, instead of one request + re-render per photo.
+  const movePhotos = useCallback(async (items: Photo[], targetAlbum: Album) => {
+    if (items.length === 0) return;
+    await Promise.all(items.map((p) => movePhotoToAlbum(p.id, targetAlbum.id, targetAlbum.groupId)));
+    const ids = new Set(items.map((p) => p.id));
+    const sourceDelta = new Map<string, number>();
+    for (const p of items) sourceDelta.set(p.albumId, (sourceDelta.get(p.albumId) ?? 0) + 1);
+    setPhotos((prev) => prev.filter((p) => !ids.has(p.id)));
+    setAllPhotos((prev) =>
+      prev.map((p) => (ids.has(p.id) ? { ...p, albumId: targetAlbum.id, groupId: targetAlbum.groupId } : p)),
+    );
     setAlbums((prev) =>
-      prev.map((a) => (a.id === photo.albumId ? { ...a, photoCount: Math.max(0, a.photoCount - 1) } : a)),
+      prev.map((a) => {
+        if (a.id === targetAlbum.id) return { ...a, photoCount: a.photoCount + items.length };
+        const removed = sourceDelta.get(a.id);
+        return removed ? { ...a, photoCount: Math.max(0, a.photoCount - removed) } : a;
+      }),
     );
   }, []);
 
-  const removePhoto = useCallback(async (photoId: string, albumId: string, _groupId: string) => {
-    await deletePhoto(photoId);
-    setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-    setAllPhotos((prev) => prev.filter((p) => p.id !== photoId));
+  const movePhoto = useCallback(
+    async (photo: Photo, targetAlbum: Album) => {
+      await movePhotos([photo], targetAlbum);
+    },
+    [movePhotos],
+  );
+
+  // Delete one or many photos in a single round-trip: all storage calls run in
+  // parallel and album counts are reconciled with one update.
+  const removePhotos = useCallback(async (items: { id: string; albumId: string }[]) => {
+    if (items.length === 0) return;
+    await Promise.all(items.map((p) => deletePhoto(p.id)));
+    const ids = new Set(items.map((p) => p.id));
+    const albumDelta = new Map<string, number>();
+    for (const p of items) albumDelta.set(p.albumId, (albumDelta.get(p.albumId) ?? 0) + 1);
+    setPhotos((prev) => prev.filter((p) => !ids.has(p.id)));
+    setAllPhotos((prev) => prev.filter((p) => !ids.has(p.id)));
     setAlbums((prev) =>
-      prev.map((a) => (a.id === albumId ? { ...a, photoCount: Math.max(0, a.photoCount - 1) } : a)),
+      prev.map((a) => {
+        const removed = albumDelta.get(a.id);
+        return removed ? { ...a, photoCount: Math.max(0, a.photoCount - removed) } : a;
+      }),
     );
   }, []);
+
+  const removePhoto = useCallback(
+    async (photoId: string, albumId: string, _groupId: string) => {
+      await removePhotos([{ id: photoId, albumId }]);
+    },
+    [removePhotos],
+  );
 
   return (
     <GalleryContext.Provider
@@ -204,7 +241,9 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
         addPhoto,
         renamePhoto,
         movePhoto,
+        movePhotos,
         removePhoto,
+        removePhotos,
       }}
     >
       {children}
