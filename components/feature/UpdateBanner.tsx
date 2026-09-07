@@ -23,8 +23,9 @@ export function UpdateBanner() {
     applyUpdate,
   } = useUpdates();
 
-  const isBusy = stage === 'downloading' || stage === 'ready';
-  const shouldShow = stage === 'available' || isBusy;
+  const isBusy = stage === 'downloading';
+  const isReady = stage === 'ready';
+  const shouldShow = stage === 'available' || isBusy || isReady;
   if (!shouldShow) return null;
   if (dismissed && !mandatory && !isBusy) return null;
 
@@ -37,11 +38,8 @@ export function UpdateBanner() {
     void Linking.openURL(downloadUrl ?? RELEASES_URL);
   };
 
-  const actionLabel = canSelfInstall ? 'Mettre à jour' : 'Télécharger';
-  const busyLabel =
-    stage === 'ready'
-      ? 'Redémarrage…'
-      : `Téléchargement${typeof progress === 'number' ? ` ${progress}%` : '…'}`;
+  const actionLabel = isReady ? 'Redémarrer' : canSelfInstall ? 'Mettre à jour' : 'Télécharger';
+  const busyLabel = `Téléchargement${typeof progress === 'number' ? ` ${progress}%` : '…'}`;
 
   return (
     <View style={[styles.banner, mandatory && styles.bannerMandatory]}>
@@ -53,15 +51,21 @@ export function UpdateBanner() {
 
       <View style={styles.textBlock}>
         <Text style={styles.title} numberOfLines={1}>
-          {mandatory ? 'Mise à jour requise' : 'Nouvelle version disponible'}
+          {mandatory
+            ? 'Mise à jour requise'
+            : isReady
+              ? 'Nouvelle version prête à installer'
+              : 'Nouvelle version disponible'}
           {latestVersion ? ` · ${latestVersion}` : ''}
         </Text>
         <Text style={styles.subtitle} numberOfLines={1}>
           {isBusy
             ? busyLabel
-            : canSelfInstall
-              ? "L'application redémarrera pour terminer l'installation."
-              : 'Ouvrez la page de téléchargement pour installer la nouvelle version.'}
+            : isReady
+              ? "Elle s'installera à la fermeture de l'application, ou redémarrez maintenant."
+              : canSelfInstall
+                ? "L'application redémarrera pour terminer l'installation."
+                : 'Ouvrez la page de téléchargement pour installer la nouvelle version.'}
         </Text>
         {stage === 'downloading' && typeof progress === 'number' ? (
           <View style={styles.progressTrack}>

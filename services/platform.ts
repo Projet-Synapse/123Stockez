@@ -9,6 +9,8 @@ export interface DesktopBridge {
   downloadUpdate: () => Promise<{ ok: boolean; error?: string }>;
   /** Quits the app, replaces the installed build, then relaunches it. */
   quitAndInstall: () => void;
+  /** Turns automatic download + install-on-quit on or off. */
+  setAutoUpdate: (enabled: boolean) => void;
   onUpdateEvent: (handler: (event: DesktopUpdateEvent) => void) => () => void;
   /** Opens an https URL in the user's real browser. */
   openExternal: (url: string) => Promise<{ ok: boolean }>;
