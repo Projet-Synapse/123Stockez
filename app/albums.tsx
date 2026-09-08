@@ -35,7 +35,14 @@ export default function AlbumsScreen() {
   useEffect(() => {
     if (!groupId) return;
     setLoading(true);
-    loadAlbums(groupId).finally(() => setLoading(false));
+    loadAlbums(groupId)
+      .catch(() =>
+        showAlert(
+          'Erreur de chargement',
+          'Impossible de récupérer les albums. Vérifiez votre connexion et réessayez.',
+        ),
+      )
+      .finally(() => setLoading(false));
   }, [groupId]);
 
   const handleRefresh = useCallback(async () => {
@@ -43,6 +50,8 @@ export default function AlbumsScreen() {
     setRefreshing(true);
     try {
       await loadAlbums(groupId);
+    } catch {
+      showAlert('Erreur', 'Impossible de rafraîchir les albums.');
     } finally {
       setRefreshing(false);
     }
@@ -59,6 +68,8 @@ export default function AlbumsScreen() {
       setAlbumName('');
       setAlbumDesc('');
       setSheetVisible(false);
+    } catch {
+      showAlert('Erreur', 'Impossible de créer cet album. Réessayez.');
     } finally {
       setSaving(false);
     }
@@ -68,7 +79,14 @@ export default function AlbumsScreen() {
     (album: Album) => {
       showAlert(`Supprimer "${album.name}" ?`, 'Toutes les photos de cet album seront supprimées.', [
         { text: 'Annuler', style: 'cancel' },
-        { text: 'Supprimer', style: 'destructive', onPress: () => removeAlbum(album.id, groupId) },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () =>
+            removeAlbum(album.id, groupId).catch(() =>
+              showAlert('Erreur', 'Impossible de supprimer cet album.'),
+            ),
+        },
       ]);
     },
     [groupId],

@@ -75,9 +75,13 @@ export default function ViewerScreen() {
     const photo = currentPhoto;
     if (!photo) return;
     setMoveVisible(false);
-    await movePhoto(photo, targetAlbum);
-    showAlert('Photo déplacée', `La photo a été déplacée vers « ${targetAlbum.name} ».`);
-    router.back();
+    try {
+      await movePhoto(photo, targetAlbum);
+      showAlert('Photo déplacée', `La photo a été déplacée vers « ${targetAlbum.name} ».`);
+      router.back();
+    } catch {
+      showAlert('Erreur', 'Impossible de déplacer cette photo.');
+    }
   };
 
   const handleRename = async () => {
@@ -88,8 +92,12 @@ export default function ViewerScreen() {
     }
     const photo = currentPhoto;
     if (!photo) return;
-    await renamePhoto(photo, trimmed);
-    setRenameVisible(false);
+    try {
+      await renamePhoto(photo, trimmed);
+      setRenameVisible(false);
+    } catch {
+      showAlert('Erreur', 'Impossible de renommer cette photo.');
+    }
   };
 
   return (

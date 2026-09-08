@@ -73,13 +73,20 @@ export default function CarnetEntryScreen() {
 
   const loadCarnet = async () => {
     if (!user) return;
-    const all = await getCarnets(user.id);
-    const found = all.find((c) => c.id === carnetId);
-    if (found) {
-      setCarnet(found);
-      if (!existingEntry) {
-        setFieldValues(found.fields.map((f) => ({ fieldId: f.id, value: '' })));
+    try {
+      const all = await getCarnets(user.id);
+      const found = all.find((c) => c.id === carnetId);
+      if (found) {
+        setCarnet(found);
+        if (!existingEntry) {
+          setFieldValues(found.fields.map((f) => ({ fieldId: f.id, value: '' })));
+        }
       }
+    } catch {
+      showAlert(
+        'Erreur de chargement',
+        'Impossible de récupérer ce carnet. Vérifiez votre connexion et réessayez.',
+      );
     }
   };
 

@@ -21,8 +21,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGallery } from '@/hooks/useGallery';
 import { useAlert } from '@/template';
 import { PhotoThumbnail, EmptyState } from '@/components';
+import { MovePhotoSheet } from '@/components/feature/MovePhotoSheet';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { Photo } from '@/types';
+import { Photo, Album } from '@/types';
 
 const NUM_COLS = 3;
 const GAP = 2;
@@ -37,7 +38,7 @@ export default function PhotosScreen() {
     color: string;
   }>();
   const { user } = useAuth();
-  const { photos, loadPhotos, addPhoto, removePhoto } = useGallery();
+  const { photos, loadPhotos, addPhoto, removePhoto, movePhoto } = useGallery();
   const { showAlert } = useAlert();
   const accentColor = color || Colors.primary;
 
@@ -49,11 +50,21 @@ export default function PhotosScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [moveVisible, setMoveVisible] = useState(false);
+  const [moving, setMoving] = useState(false);
 
   useEffect(() => {
     if (!albumId) return;
     setLoading(true);
-    loadPhotos(albumId).finally(() => setLoading(false));
+    loadPhotos(albumId)
+      .catch(() =>
+        showAlert(
+          'Erreur de chargement',
+          'Impossible de récupérer les photos. Vérifiez votre connexion et réessayez.',
+        ),
+      )
+      .finally(() => setLoading(false));
   }, [albumId]);
 
   const handleRefresh = useCallback(async () => {
@@ -61,6 +72,8 @@ export default function PhotosScreen() {
     setRefreshing(true);
     try {
       await loadPhotos(albumId);
+    } catch {
+      showAlert('Erreur', 'Impossible de rafraîchir les photos.');
     } finally {
       setRefreshing(false);
     }
@@ -77,12 +90,63 @@ export default function PhotosScreen() {
       allowsMultipleSelection: true,
       quality: 0.85,
     });
-    if (!result.canceled) {
+    if (result.canceled || result.assets.length === 0) return;
+    setUploading(true);
+    let failed = 0;
+    try {
       for (const asset of result.assets) {
-        await addPhoto(user!.id, albumId, groupId, asset.uri, asset.fileName || `photo_${Date.now()}`);
+        try {
+          await addPhoto(user!.id, albumId, groupId, asset.uri, asset.fileName || `photo_${Date.now()}`);
+        } catch {
+          failed += 1;
+        }
       }
+      if (failed > 0) {
+        showAlert(
+          'Envoi partiel',
+          `${failed} photo${failed > 1 ? 's' : ''} sur ${result.assets.length} n'${failed > 1 ? 'ont' : 'a'} pas pu être ajoutée${failed > 1 ? 's' : ''}. Vérifiez votre connexion et réessayez.`,
+        );
+      }
+    } finally {
+      setUploading(false);
     }
   }, [user, albumId, groupId]);
+
+  const handleMoveSelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    setMoveVisible(true);
+  }, [selectedIds]);
+
+  const handleBulkMove = useCallback(
+    async (targetAlbum: Album) => {
+      setMoveVisible(false);
+      setMoving(true);
+      let failed = 0;
+      try {
+        for (const id of selectedIds) {
+          const photo = photos.find((p) => p.id === id);
+          if (!photo) continue;
+          try {
+            await movePhoto(photo, targetAlbum);
+          } catch {
+            failed += 1;
+          }
+        }
+        if (failed > 0) {
+          showAlert(
+            'Déplacement partiel',
+            `${failed} photo${failed > 1 ? 's' : ''} n'${failed > 1 ? 'ont' : 'a'} pas pu être déplacée${failed > 1 ? 's' : ''}.`,
+          );
+        } else {
+          showAlert('Photos déplacées', `Déplacées vers « ${targetAlbum.name} ».`);
+        }
+      } finally {
+        setMoving(false);
+        exitSelectionMode();
+      }
+    },
+    [selectedIds, photos, movePhoto],
+  );
 
   const handleShareAlbum = useCallback(async () => {
     const count = photos.length;
@@ -152,12 +216,23 @@ export default function PhotosScreen() {
         style: 'destructive',
         onPress: async () => {
           setDeleting(true);
+          let failed = 0;
           try {
             for (const id of selectedIds) {
               const photo = photos.find((p) => p.id === id);
               if (photo) {
-                await removePhoto(photo.id, albumId, photo.groupId);
+                try {
+                  await removePhoto(photo.id, albumId, photo.groupId);
+                } catch {
+                  failed += 1;
+                }
               }
+            }
+            if (failed > 0) {
+              showAlert(
+                'Suppression partielle',
+                `${failed} photo${failed > 1 ? 's' : ''} n'${failed > 1 ? 'ont' : 'a'} pas pu être supprimée${failed > 1 ? 's' : ''}.`,
+              );
             }
           } finally {
             setDeleting(false);
@@ -222,6 +297,24 @@ export default function PhotosScreen() {
               />
             </Pressable>
             <Pressable
+              onPress={handleMoveSelected}
+              style={styles.iconBtn}
+              hitSlop={8}
+              disabled={selectedIds.size === 0 || moving}
+              accessibilityRole="button"
+              accessibilityLabel="Déplacer la sélection"
+            >
+              {moving ? (
+                <ActivityIndicator color={Colors.textSecondary} size="small" />
+              ) : (
+                <MaterialIcons
+                  name="drive-file-move"
+                  size={22}
+                  color={selectedIds.size === 0 ? Colors.textMuted : Colors.textSecondary}
+                />
+              )}
+            </Pressable>
+            <Pressable
               onPress={handleDeleteSelected}
               style={styles.iconBtn}
               hitSlop={8}
@@ -280,10 +373,15 @@ export default function PhotosScreen() {
               onPress={handleAddPhoto}
               style={styles.iconBtn}
               hitSlop={8}
+              disabled={uploading}
               accessibilityRole="button"
               accessibilityLabel="Ajouter des photos"
             >
-              <MaterialIcons name="add-photo-alternate" size={24} color={Colors.textPrimary} />
+              {uploading ? (
+                <ActivityIndicator color={Colors.textPrimary} size="small" />
+              ) : (
+                <MaterialIcons name="add-photo-alternate" size={24} color={Colors.textPrimary} />
+              )}
             </Pressable>
           </View>
         </View>
@@ -362,12 +460,26 @@ export default function PhotosScreen() {
         <Pressable
           style={[styles.fab, { bottom: insets.bottom + Spacing.lg, backgroundColor: accentColor }]}
           onPress={handleAddPhoto}
+          disabled={uploading}
           accessibilityRole="button"
           accessibilityLabel="Ajouter des photos"
         >
-          <MaterialIcons name="add-photo-alternate" size={28} color={Colors.textPrimary} />
+          {uploading ? (
+            <ActivityIndicator color={Colors.textPrimary} size="small" />
+          ) : (
+            <MaterialIcons name="add-photo-alternate" size={28} color={Colors.textPrimary} />
+          )}
         </Pressable>
       ) : null}
+
+      {/* Bulk move sheet */}
+      <MovePhotoSheet
+        visible={moveVisible}
+        onClose={() => setMoveVisible(false)}
+        currentAlbumId={albumId}
+        userId={user?.id ?? ''}
+        onMove={handleBulkMove}
+      />
     </View>
   );
 }

@@ -67,7 +67,14 @@ export default function CarnetsScreen() {
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    loadCarnets(user.id).finally(() => setLoading(false));
+    loadCarnets(user.id)
+      .catch(() =>
+        showAlert(
+          'Erreur de chargement',
+          'Impossible de récupérer vos carnets. Vérifiez votre connexion et réessayez.',
+        ),
+      )
+      .finally(() => setLoading(false));
   }, [user]);
 
   const handleRefresh = useCallback(async () => {
@@ -75,6 +82,8 @@ export default function CarnetsScreen() {
     setRefreshing(true);
     try {
       await loadCarnets(user.id);
+    } catch {
+      showAlert('Erreur', 'Impossible de rafraîchir vos carnets.');
     } finally {
       setRefreshing(false);
     }
@@ -125,6 +134,8 @@ export default function CarnetsScreen() {
       await addCarnet(user!.id, carnetName.trim(), selectedEmoji, carnetDesc.trim(), carnetFields);
       resetForm();
       setModalVisible(false);
+    } catch {
+      showAlert('Erreur', 'Impossible de créer ce carnet. Réessayez.');
     } finally {
       setSaving(false);
     }
@@ -134,7 +145,14 @@ export default function CarnetsScreen() {
     (carnet: Carnet) => {
       showAlert(`Supprimer "${carnet.name}" ?`, 'Toutes les entrées de ce carnet seront supprimées.', [
         { text: 'Annuler', style: 'cancel' },
-        { text: 'Supprimer', style: 'destructive', onPress: () => removeCarnet(carnet.id, user!.id) },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () =>
+            removeCarnet(carnet.id, user!.id).catch(() =>
+              showAlert('Erreur', 'Impossible de supprimer ce carnet.'),
+            ),
+        },
       ]);
     },
     [user],

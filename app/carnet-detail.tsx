@@ -34,7 +34,14 @@ export default function CarnetDetailScreen() {
   useEffect(() => {
     if (!carnetId) return;
     setLoading(true);
-    Promise.all([loadEntries(carnetId), loadCarnetMeta()]).finally(() => setLoading(false));
+    Promise.all([loadEntries(carnetId), loadCarnetMeta()])
+      .catch(() =>
+        showAlert(
+          'Erreur de chargement',
+          'Impossible de récupérer ce carnet. Vérifiez votre connexion et réessayez.',
+        ),
+      )
+      .finally(() => setLoading(false));
   }, [carnetId]);
 
   const loadCarnetMeta = async () => {
@@ -49,6 +56,8 @@ export default function CarnetDetailScreen() {
     setRefreshing(true);
     try {
       await Promise.all([loadEntries(carnetId), loadCarnetMeta()]);
+    } catch {
+      showAlert('Erreur', 'Impossible de rafraîchir ce carnet.');
     } finally {
       setRefreshing(false);
     }
@@ -85,7 +94,14 @@ export default function CarnetDetailScreen() {
     (entry: CarnetEntry) => {
       showAlert(`Supprimer "${entry.name}" ?`, 'Cette entrée sera supprimée définitivement.', [
         { text: 'Annuler', style: 'cancel' },
-        { text: 'Supprimer', style: 'destructive', onPress: () => removeEntry(entry.id, carnetId) },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () =>
+            removeEntry(entry.id, carnetId).catch(() =>
+              showAlert('Erreur', 'Impossible de supprimer cette entrée.'),
+            ),
+        },
       ]);
     },
     [carnetId],

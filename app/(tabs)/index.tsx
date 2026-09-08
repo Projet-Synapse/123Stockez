@@ -39,7 +39,14 @@ export default function GroupsScreen() {
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    loadGroups(user.id).finally(() => setLoading(false));
+    loadGroups(user.id)
+      .catch(() =>
+        showAlert(
+          'Erreur de chargement',
+          'Impossible de récupérer vos groupes. Vérifiez votre connexion et réessayez.',
+        ),
+      )
+      .finally(() => setLoading(false));
   }, [user]);
 
   const handleRefresh = useCallback(async () => {
@@ -47,6 +54,8 @@ export default function GroupsScreen() {
     setRefreshing(true);
     try {
       await loadGroups(user.id);
+    } catch {
+      showAlert('Erreur', 'Impossible de rafraîchir vos groupes.');
     } finally {
       setRefreshing(false);
     }
@@ -69,6 +78,8 @@ export default function GroupsScreen() {
       setGroupName('');
       setGroupDesc('');
       setSheetVisible(false);
+    } catch {
+      showAlert('Erreur', 'Impossible de créer ce groupe. Réessayez.');
     } finally {
       setSaving(false);
     }
@@ -78,7 +89,14 @@ export default function GroupsScreen() {
     (group: Group) => {
       showAlert(`Supprimer "${group.name}" ?`, 'Tous les albums et photos seront supprimés.', [
         { text: 'Annuler', style: 'cancel' },
-        { text: 'Supprimer', style: 'destructive', onPress: () => removeGroup(group.id, user!.id) },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () =>
+            removeGroup(group.id, user!.id).catch(() =>
+              showAlert('Erreur', 'Impossible de supprimer ce groupe.'),
+            ),
+        },
       ]);
     },
     [user],

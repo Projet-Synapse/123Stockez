@@ -19,8 +19,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGallery } from '@/hooks/useGallery';
 import { useAlert } from '@/template';
 import { PhotoThumbnail, EmptyState } from '@/components';
+import { MovePhotoSheet } from '@/components/feature/MovePhotoSheet';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { Photo } from '@/types';
+import { Photo, Album } from '@/types';
 
 const NUM_COLS = 3;
 const GAP = 2;
@@ -29,7 +30,7 @@ export default function AllPhotosScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { allPhotos, loadAllPhotos, removePhoto } = useGallery();
+  const { allPhotos, loadAllPhotos, removePhoto, movePhoto } = useGallery();
   const { showAlert } = useAlert();
 
   const screenWidth = Dimensions.get('window').width;
@@ -40,11 +41,20 @@ export default function AllPhotosScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [moveVisible, setMoveVisible] = useState(false);
+  const [moving, setMoving] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    loadAllPhotos(user.id).finally(() => setLoading(false));
+    loadAllPhotos(user.id)
+      .catch(() =>
+        showAlert(
+          'Erreur de chargement',
+          'Impossible de récupérer vos photos. Vérifiez votre connexion et réessayez.',
+        ),
+      )
+      .finally(() => setLoading(false));
   }, [user]);
 
   const handleRefresh = useCallback(async () => {
@@ -52,6 +62,8 @@ export default function AllPhotosScreen() {
     setRefreshing(true);
     try {
       await loadAllPhotos(user.id);
+    } catch {
+      showAlert('Erreur', 'Impossible de rafraîchir vos photos.');
     } finally {
       setRefreshing(false);
     }
@@ -118,12 +130,23 @@ export default function AllPhotosScreen() {
         style: 'destructive',
         onPress: async () => {
           setDeleting(true);
+          let failed = 0;
           try {
             for (const id of selectedIds) {
               const photo = allPhotos.find((p) => p.id === id);
               if (photo) {
-                await removePhoto(photo.id, photo.albumId, photo.groupId);
+                try {
+                  await removePhoto(photo.id, photo.albumId, photo.groupId);
+                } catch {
+                  failed += 1;
+                }
               }
+            }
+            if (failed > 0) {
+              showAlert(
+                'Suppression partielle',
+                `${failed} photo${failed > 1 ? 's' : ''} n'${failed > 1 ? 'ont' : 'a'} pas pu être supprimée${failed > 1 ? 's' : ''}.`,
+              );
             }
           } finally {
             setDeleting(false);
@@ -133,6 +156,42 @@ export default function AllPhotosScreen() {
       },
     ]);
   }, [selectedIds, allPhotos, removePhoto, exitSelectionMode, showAlert]);
+
+  const handleMoveSelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    setMoveVisible(true);
+  }, [selectedIds]);
+
+  const handleBulkMove = useCallback(
+    async (targetAlbum: Album) => {
+      setMoveVisible(false);
+      setMoving(true);
+      let failed = 0;
+      try {
+        for (const id of selectedIds) {
+          const photo = allPhotos.find((p) => p.id === id);
+          if (!photo) continue;
+          try {
+            await movePhoto(photo, targetAlbum);
+          } catch {
+            failed += 1;
+          }
+        }
+        if (failed > 0) {
+          showAlert(
+            'Déplacement partiel',
+            `${failed} photo${failed > 1 ? 's' : ''} n'${failed > 1 ? 'ont' : 'a'} pas pu être déplacée${failed > 1 ? 's' : ''}.`,
+          );
+        } else {
+          showAlert('Photos déplacées', `Déplacées vers « ${targetAlbum.name} ».`);
+        }
+      } finally {
+        setMoving(false);
+        exitSelectionMode();
+      }
+    },
+    [selectedIds, allPhotos, movePhoto],
+  );
 
   const filteredPhotos = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -185,6 +244,24 @@ export default function AllPhotosScreen() {
                 size={22}
                 color={Colors.textSecondary}
               />
+            </Pressable>
+            <Pressable
+              onPress={handleMoveSelected}
+              hitSlop={8}
+              style={styles.iconBtn}
+              disabled={selectedIds.size === 0 || moving}
+              accessibilityRole="button"
+              accessibilityLabel="Déplacer la sélection"
+            >
+              {moving ? (
+                <ActivityIndicator color={Colors.textSecondary} size="small" />
+              ) : (
+                <MaterialIcons
+                  name="drive-file-move"
+                  size={22}
+                  color={selectedIds.size === 0 ? Colors.textMuted : Colors.textSecondary}
+                />
+              )}
             </Pressable>
             <Pressable
               onPress={handleDeleteSelected}
@@ -312,6 +389,15 @@ export default function AllPhotosScreen() {
           />
         </>
       )}
+
+      {/* Bulk move sheet — no album is excluded since selection can span several albums */}
+      <MovePhotoSheet
+        visible={moveVisible}
+        onClose={() => setMoveVisible(false)}
+        currentAlbumId=""
+        userId={user?.id ?? ''}
+        onMove={handleBulkMove}
+      />
     </View>
   );
 }
