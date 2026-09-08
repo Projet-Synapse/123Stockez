@@ -1,0 +1,88 @@
+name: Android APK (build direct, sans compte Expo)
+
+# ─────────────────────────────────────────────────────────────────────────
+# Construit l'APK Android directement sur le runner GitHub (Gradle + SDK
+# installés à la volée), sans compte Expo ni EXPO_TOKEN.
+#
+# Déclenchement : manuel (workflow_dispatch) ou pousser un tag v*.
+# L'APK est :
+#   • téléchargeable dans l'onglet Actions (artefact « 123Stockez-apk ») ;
+#   • joint à la release GitHub quand le déclenchement est un tag. La release
+#     est normalement créée par le workflow desktop (electron-builder) : on
+#     l'attend jusqu'à 30 min, puis on la crée nous-mêmes pour ne pas perdre
+#     l'APK si le build desktop a échoué.
+#
+# Signature : expo prebuild génère un debug.keystore et signe la version
+# « release » avec lui par défaut : l'APK s'installe sur tout appareil
+# (« sources inconnues »). Pour le Play Store, créer un vrai keystore et
+# renseigner signingConfigs.
+# ─────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      # Le bundle Metro de production tient mal dans la mémoire Node par
+      # défaut d'un runner GitHub.
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Installer le SDK Android
+        uses: android-actions/setup-android@v3
+
+      - name: Générer le projet natif Android (expo prebuild)
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Construire l'APK (assembleRelease)
+        run: cd android && ./gradlew assembleRelease --no-daemon
+
+      - name: Renommer l'APK
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk 123Stockez.apk
+          ls -lh 123Stockez.apk
+
+      - name: Publier l'APK comme artefact de ce run
+        uses: actions/upload-artifact@v4
+        with:
+          name: 123Stockez-apk
+          path: 123Stockez.apk
+          if-no-files-found: error
+
+      - name: Joindre l'APK à la release (déclenchement par tag uniquement)
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          for i in $(seq 1 30); do
+            gh release view "$TAG" >/dev/null 2>&1 && break
+            sleep 60
+          done
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "${TAG#v}" --generate-notes
+          gh release upload "$TAG" 123Stockez.apk --clobber
