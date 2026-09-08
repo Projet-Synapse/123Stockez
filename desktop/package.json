@@ -1,7 +1,7 @@
 {
   "name": "stockez-desktop",
   "productName": "123Stockez",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "123Stockez — coffre-fort photo multiplateforme",
   "main": "main.js",
   "author": {
