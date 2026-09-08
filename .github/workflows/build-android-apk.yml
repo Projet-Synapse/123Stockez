@@ -60,10 +60,13 @@ jobs:
         run: npx expo prebuild --platform android --no-install
 
       - name: Donner de la mémoire à Gradle et D8
-        # Le dexeur D8 tourne dans la JVM du daemon Gradle : le heap par
-        # défaut explose sur un graphe de dépendances photo (Skia etc.).
-        # 4 Go courent largement.
-        run: echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
+        # Le dexeur D8 et l'analyse lintVital tournent dans la JVM du daemon
+        # Gradle : les réglages par défaut explosent sur un graphe de
+        # dépendances photo (Skia etc.). 6 Go de heap, 2 Go de Metaspace,
+        # et pas d'analyse lint release.
+        run: |
+          echo "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=2g" >> android/gradle.properties
+          echo "lint.checkReleaseBuilds=false" >> android/gradle.properties
 
       - name: Construire l'APK (assembleRelease)
         run: cd android && ./gradlew assembleRelease --no-daemon
