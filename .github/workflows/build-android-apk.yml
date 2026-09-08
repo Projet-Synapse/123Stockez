@@ -59,6 +59,12 @@ jobs:
       - name: Générer le projet natif Android (expo prebuild)
         run: npx expo prebuild --platform android --no-install
 
+      - name: Donner de la mémoire à Gradle et D8
+        # Le dexeur D8 tourne dans la JVM du daemon Gradle : le heap par
+        # défaut explose sur un graphe de dépendances photo (Skia etc.).
+        # 4 Go courent largement.
+        run: echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
+
       - name: Construire l'APK (assembleRelease)
         run: cd android && ./gradlew assembleRelease --no-daemon
 
