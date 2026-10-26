@@ -3,7 +3,7 @@
 # desktop/package.json holds the (tiny) runtime dependency set that ships.
 appId: com.stockez.app
 productName: 123Stockez
-copyright: Copyright © 2026 123Stockez
+copyright: Copyright © 2026 Catelyn2332
 
 directories:
   app: desktop

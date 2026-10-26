@@ -4,10 +4,7 @@
   "version": "1.3.0",
   "description": "123Stockez — coffre-fort photo multiplateforme",
   "main": "main.js",
-  "author": {
-    "name": "Projet-Synapse",
-    "email": "catelyn2332-design@users.noreply.github.com"
-  },
+  "author": "Catelyn2332",
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {

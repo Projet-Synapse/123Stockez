@@ -2,6 +2,7 @@
   "name": "onspace-app",
   "main": "expo-router/entry",
   "version": "1.3.0",
+  "author": "Catelyn2332",
   "scripts": {
     "prepare": "husky",
     "start": "expo start",
